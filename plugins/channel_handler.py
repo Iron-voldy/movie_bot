@@ -377,18 +377,19 @@ async def handle_file_button_after_subscription(client: Client, query, file_id: 
         file_details = await get_file_details(file_id)
         if file_details:
             # Show subtitle language selection
-            from language_config import get_all_languages, get_language_display_name
-            subtitle_languages = get_all_languages()  # Use language_config for consistency
+            from language_config import get_all_languages, get_language_display_name, get_language_flag
+            subtitle_languages = get_all_languages()  # Gets all languages including Sinhala
             btn = []
             
-            # Add subtitle language options - show all languages in rows of 2
+            # Add subtitle language options - show all languages in rows of 2 with flags
             for i in range(0, len(subtitle_languages), 2):
                 row = []
                 for j in range(2):
                     if i + j < len(subtitle_languages):
                         lang = subtitle_languages[i + j]
                         display_name = get_language_display_name(lang)
-                        row.append(InlineKeyboardButton(f"{display_name}", callback_data=f"subtitle#{file_id}#{lang}"))
+                        flag = get_language_flag(lang)
+                        row.append(InlineKeyboardButton(f"{flag} {display_name}", callback_data=f"subtitle#{file_id}#{lang}"))
                 if row:  # Only add row if it has buttons
                     btn.append(row)
             

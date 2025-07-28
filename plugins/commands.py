@@ -120,44 +120,21 @@ async def start(client, message):
         actual_file_id = parts[0]
         subtitle_language = parts[1]
         
-        # Get subtitle preferences
-        subtitle_prefs = getattr(temp, 'SUBTITLE_PREFS', {}).get(message.from_user.id, {})
+        # Check subscription to required channels (simplified to 2 channels only)
+        is_subscribed_all, missing_channels = await check_user_channels(client, message.from_user.id)
         
-        if subtitle_prefs and subtitle_prefs.get('language') == subtitle_language:
-            # Use language-specific channels for authorization
-            language_channels = subtitle_prefs.get('channels', [])
-            auth_channels = [int(ch) for ch in language_channels]
-        else:
-            # Fallback to default channels
-            auth_channels = temp.AUTH_CHANNEL
-            
-        # Check subscription to language-specific channels
-        btn = []
-        for channel in auth_channels:
-            if not await is_subscribed(client, message, channel):
-                try:
-                    invite_link = await client.create_chat_invite_link(channel, creates_join_request=False)
-                    chat = await client.get_chat(channel)
-                    btn.append(
-                        [InlineKeyboardButton(f"✇ Join {chat.title} ✇", url=invite_link.invite_link)]
-                    )
-                except Exception as e:
-                    logger.error(f"Error creating invite link for channel {channel}: {e}")
-                    continue
-
-        if btn:
-            btn.append([InlineKeyboardButton("🔄 Try Again", url=f"https://t.me/{temp.U_NAME}?start={file_id}")])
-            await client.send_message(
-                chat_id=message.from_user.id,
-                text=f"**Please Join {subtitle_language.title()} Movie Channels to get subtitles!**\n\n"
-                     f"🗣 **Language:** {subtitle_language.title()}\n"
-                     f"🎬 **Includes:** Movie + Subtitles",
-                reply_markup=InlineKeyboardMarkup(btn),
-                parse_mode=enums.ParseMode.MARKDOWN
+        if not is_subscribed_all:
+            # User needs to join required channels
+            subscription_buttons = await create_join_buttons(client, missing_channels)
+            await message.reply_text(
+                f"🔒 **File Access Restricted**\n\n"
+                f"You must join **all required channels** below to access this file:\n\n"
+                f"Please use the numbered buttons below to join and then try again:",
+                reply_markup=subscription_buttons
             )
             return
             
-        # User is subscribed to language channels, send movie with subtitles
+        # User is subscribed, send movie with subtitles
         await send_movie_with_subtitles(client, message, actual_file_id, subtitle_language)
         return
         
@@ -523,8 +500,8 @@ async def help_bot(client: Client, query):
 • Use inline search for best results
 
 🔧 **Troubleshooting:**
-• Join all required channels
-• Make sure you've selected a language
+• Join all required channels (2 channels total)
+• Try again after joining channels
 • Contact support if issues persist
 
 📞 **Support:**

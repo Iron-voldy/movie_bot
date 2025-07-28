@@ -1,5 +1,5 @@
 """
-Simplified channel configuration - Only 2 required channels
+Simplified configuration - Only 2 required channels for joining, all languages for subtitles
 """
 
 # Required channels that all users must join before using the bot
@@ -19,19 +19,60 @@ REQUIRED_CHANNELS = [
 # Legacy compatibility - keeping old structure but simplified
 COMMON_CHANNEL = '-1002766947260'  # First required channel
 
-LANGUAGE_CHANNELS = {
+# All available languages for subtitle selection (not for channels)
+SUBTITLE_LANGUAGES = {
     'english': {
-        'channel': '-1002766947260',
-        'display_name': 'English Movies',
+        'display_name': 'English',
         'flag': '🇺🇸'
     },
-    
-    'all': {
-        'channel': '-1002886647880',
-        'display_name': 'All Movies',
-        'flag': '🌐'
+    'tamil': {
+        'display_name': 'Tamil',
+        'flag': '🇮🇳'
+    },
+    'hindi': {
+        'display_name': 'Hindi',
+        'flag': '🇮🇳'
+    },
+    'malayalam': {
+        'display_name': 'Malayalam',
+        'flag': '🇮🇳'
+    },
+    'telugu': {
+        'display_name': 'Telugu',
+        'flag': '🇮🇳'
+    },
+    'korean': {
+        'display_name': 'Korean',
+        'flag': '🇰🇷'
+    },
+    'sinhala': {
+        'display_name': 'Sinhala',
+        'flag': '🇱🇰'
+    },
+    'chinese': {
+        'display_name': 'Chinese',
+        'flag': '🇨🇳'
+    },
+    'japanese': {
+        'display_name': 'Japanese',
+        'flag': '🇯🇵'
+    },
+    'spanish': {
+        'display_name': 'Spanish',
+        'flag': '🇪🇸'
+    },
+    'french': {
+        'display_name': 'French',
+        'flag': '🇫🇷'
+    },
+    'arabic': {
+        'display_name': 'Arabic',
+        'flag': '🇸🇦'
     }
 }
+
+# Legacy compatibility for old language channels (now just for backward compatibility)
+LANGUAGE_CHANNELS = SUBTITLE_LANGUAGES
 
 def get_required_channels():
     """Get list of all required channels"""
@@ -45,17 +86,26 @@ def get_channel_info(channel_id):
     return None
 
 def get_all_languages():
-    """Get all available languages"""
-    return list(LANGUAGE_CHANNELS.keys())
+    """Get all available languages for subtitles"""
+    return list(SUBTITLE_LANGUAGES.keys())
+
+def get_subtitle_languages():
+    """Get all subtitle languages"""
+    return SUBTITLE_LANGUAGES
 
 def get_language_display_name(language):
     """Get display name for a language"""
-    return LANGUAGE_CHANNELS.get(language, {}).get('display_name', language.title())
+    return SUBTITLE_LANGUAGES.get(language, {}).get('display_name', language.title())
 
+def get_language_flag(language):
+    """Get flag emoji for a language"""
+    return SUBTITLE_LANGUAGES.get(language, {}).get('flag', '🌐')
+
+# Legacy compatibility functions (for backward compatibility only)
 def get_language_channel(language):
-    """Get channel ID for a language"""
-    return LANGUAGE_CHANNELS.get(language, {}).get('channel', COMMON_CHANNEL)
+    """Legacy function - now returns common channel for all languages"""
+    return COMMON_CHANNEL
 
 def get_language_channels():
-    """Get all language channels"""
-    return LANGUAGE_CHANNELS
+    """Legacy function - now returns subtitle languages for compatibility"""
+    return SUBTITLE_LANGUAGES

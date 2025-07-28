@@ -318,20 +318,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         from .simple_channel_handler import check_user_channels, create_join_buttons
         from language_config import get_language_display_name
         
-        # Get user's language preference
-        user_language = await db.get_user_language(query.from_user.id)
-        
-        if not user_language:
-            # User needs to select language first
-            language_buttons = await show_language_selection(client, query.from_user.id)
-            await query.message.edit_text(
-                "🌐 **Language Selection Required**\n\n"
-                "Please select your language first to access files:",
-                reply_markup=language_buttons
-            )
-            return
-        
-        # Check channel subscriptions
+        # Check channel subscriptions (no language selection required for channels)
         is_subscribed_all, missing_channels = await check_user_channels(
             client, query.from_user.id
         )
@@ -352,18 +339,19 @@ async def cb_handler(client: Client, query: CallbackQuery):
         file_details = await get_file_details(file_id)
         if file_details:
             # Show subtitle language selection
-            from language_config import get_all_languages
-            subtitle_languages = get_all_languages()  # Use language_config for consistency
+            from language_config import get_all_languages, get_language_display_name, get_language_flag
+            subtitle_languages = get_all_languages()  # Gets all languages including Sinhala
             btn = []
             
-            # Add subtitle language options - show all languages in rows of 2
+            # Add subtitle language options - show all languages in rows of 2 with flags
             for i in range(0, len(subtitle_languages), 2):
                 row = []
                 for j in range(2):
                     if i + j < len(subtitle_languages):
                         lang = subtitle_languages[i + j]
                         display_name = get_language_display_name(lang)
-                        row.append(InlineKeyboardButton(f"{display_name}", callback_data=f"subtitle#{file_id}#{lang}"))
+                        flag = get_language_flag(lang)
+                        row.append(InlineKeyboardButton(f"{flag} {display_name}", callback_data=f"subtitle#{file_id}#{lang}"))
                 if row:  # Only add row if it has buttons
                     btn.append(row)
             
@@ -613,21 +601,7 @@ async def auto_filter(client, msg, spoll=False):
         from .simple_channel_handler import check_user_channels, create_join_buttons
         from language_config import get_language_display_name
         
-        user_language = await db.get_user_language(message.from_user.id)
-        
-        if not user_language:
-            # User hasn't selected a language yet
-            language_buttons = await show_language_selection(client, message.from_user.id)
-            await message.reply(
-                "🌐 **Please select your language first:**\n\n"
-                "You'll need to join 2 channels:\n"
-                "1. Common Updates Channel (for all users)\n"
-                "2. Language-specific Channel (for your chosen language)",
-                reply_markup=language_buttons
-            )
-            return
-        
-        # Check if user is subscribed to required channels
+        # Check if user is subscribed to required channels (no language selection required)
         is_subscribed_all, missing_channels = await check_user_channels(client, message.from_user.id)
         
         if not is_subscribed_all:

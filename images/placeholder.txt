@@ -1,5 +1,0 @@
-This folder will contain bot images.
-Place your anime/cute girl images here.
-
-Supported formats: JPG, PNG, GIF
-Recommended size: 1280x720 or smaller

@@ -315,7 +315,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         
         # Check channel subscriptions before showing file options
         from database.users_chats_db import db
-        from .channel_handler import check_user_subscriptions, create_subscription_buttons, show_language_selection
+        from .simple_channel_handler import check_user_channels, create_join_buttons
         from language_config import get_language_display_name
         
         # Get user's language preference
@@ -332,23 +332,18 @@ async def cb_handler(client: Client, query: CallbackQuery):
             return
         
         # Check channel subscriptions
-        is_subscribed_all, missing_channels, _ = await check_user_subscriptions(
-            client, query.from_user.id, user_language
+        is_subscribed_all, missing_channels = await check_user_channels(
+            client, query.from_user.id
         )
         
         if not is_subscribed_all:
             # User needs to join channels before accessing files
-            subscription_buttons = await create_subscription_buttons(
-                client, query.from_user.id, user_language, f"check_file_access_{file_id}"
-            )
+            subscription_buttons = await create_join_buttons(client, missing_channels)
             
             await query.message.edit_text(
                 f"🔒 **File Access Restricted**\n\n"
-                f"🎯 **Language**: {get_language_display_name(user_language)}\n\n"
-                f"To access this file, please join the required channels:\n"
-                f"1. Common Updates Channel\n"
-                f"2. {get_language_display_name(user_language)} Channel\n\n"
-                f"Join both channels to continue:",
+                f"You must join **all required channels** below to access this file:\n\n"
+                f"Please use the numbered buttons below to join and then click 'Check Again':",
                 reply_markup=subscription_buttons
             )
             return
@@ -615,7 +610,7 @@ async def auto_filter(client, msg, spoll=False):
     # Check if user is subscribed to required channels
     if message.from_user:
         from database.users_chats_db import db
-        from .channel_handler import check_user_subscriptions, create_subscription_buttons, show_language_selection
+        from .simple_channel_handler import check_user_channels, create_join_buttons
         from language_config import get_language_display_name
         
         user_language = await db.get_user_language(message.from_user.id)
@@ -633,20 +628,16 @@ async def auto_filter(client, msg, spoll=False):
             return
         
         # Check if user is subscribed to required channels
-        is_subscribed_all, missing_channels, _ = await check_user_subscriptions(client, message.from_user.id, user_language)
+        is_subscribed_all, missing_channels = await check_user_channels(client, message.from_user.id)
         
         if not is_subscribed_all:
             # User needs to join channels
-            subscription_buttons = await create_subscription_buttons(
-                client, message.from_user.id, user_language, f"check_subscription_{user_language}"
-            )
+            subscription_buttons = await create_join_buttons(client, missing_channels)
             
             await message.reply(
-                f"🎯 **Your Language**: {get_language_display_name(user_language)}\n\n"
-                "📋 **Required Channels:**\n"
-                "1. Common Updates Channel (for all users)\n"
-                f"2. {get_language_display_name(user_language)} Channel (for your language)\n\n"
-                "Please join both channels to continue:",
+                f"🔒 **Access Restricted**\n\n"
+                f"You must join **all required channels** below to use this bot:\n\n"
+                f"Please use the numbered buttons below to join and then click 'Check Again':",
                 reply_markup=subscription_buttons
             )
             return

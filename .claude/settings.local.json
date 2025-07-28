@@ -4,7 +4,9 @@
       "Bash(find . -name \"*.env*\" -o -name \"*.config*\" -o -name \".env\")",
       "Bash(ls -la)",
       "Bash(find:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(pip install:*)",
+      "Bash(pip --version)"
     ],
     "deny": []
   }

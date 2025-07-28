@@ -6,7 +6,6 @@
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
-    "healthcheckPath": "/health",
     "startCommand": "python bot.py"
   }
 }

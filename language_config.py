@@ -1,123 +1,61 @@
 """
-Language-specific channel configuration for subtitle bot
-Update these channel IDs with your actual language-specific channels
+Simplified channel configuration - Only 2 required channels
 """
 
-# Common channel that all users must join
-COMMON_CHANNEL = '-1002614174192'
+# Required channels that all users must join before using the bot
+REQUIRED_CHANNELS = [
+    {
+        'channel': '-1002766947260',
+        'name': 'Movies Channel 1',
+        'type': 'main'
+    },
+    {
+        'channel': '-1002886647880', 
+        'name': 'Movies Channel 2',
+        'type': 'main'
+    }
+]
 
-# Language-specific channels with actual channel IDs
+# Legacy compatibility - keeping old structure but simplified
+COMMON_CHANNEL = '-1002766947260'  # First required channel
+
 LANGUAGE_CHANNELS = {
     'english': {
         'channel': '-1002766947260',
-        'display_name': 'English',
+        'display_name': 'English Movies',
         'flag': '🇺🇸'
     },
     
-    'korean': {
+    'all': {
         'channel': '-1002886647880',
-        'display_name': 'Korean',
-        'flag': '🇰🇷'
-    },
-    
-    'spanish': {
-        'channel': '-1002783974864',
-        'display_name': 'Spanish',
-        'flag': '🇪🇸'
-    },
-    
-    'french': {
-        'channel': '-1002758900991',
-        'display_name': 'French',
-        'flag': '🇫🇷'
-    },
-    
-    'german': {
-        'channel': '-1002861718794',
-        'display_name': 'German',
-        'flag': '🇩🇪'
-    },
-    
-    'italian': {
-        'channel': '-1002207907276',
-        'display_name': 'Italian',
-        'flag': '🇮🇹'
-    },
-    
-    'portuguese': {
-        'channel': '-1002561296642',
-        'display_name': 'Portuguese',
-        'flag': '🇵🇹'
-    },
-    
-    'chinese': {
-        'channel': '-1002622821443',
-        'display_name': 'Chinese',
-        'flag': '🇨🇳'
-    },
-    
-    'japanese': {
-        'channel': '-1002781237685',
-        'display_name': 'Japanese',
-        'flag': '🇯🇵'
-    },
-    
-    'arabic': {
-        'channel': '-1002831127039',
-        'display_name': 'Arabic',
-        'flag': '🇸🇦'
-    },
-    
-    'hindi': {
-        'channel': '-1002767591536',
-        'display_name': 'Hindi',
-        'flag': '🇮🇳'
-    },
-    
-    'tamil': {
-        'channel': '-1002750405093',
-        'display_name': 'Tamil',
-        'flag': '🇮🇳'
-    },
-    
-    'malayalam': {
-        'channel': '-1002596417585',
-        'display_name': 'Malayalam',
-        'flag': '🇮🇳'
-    },
-    
-    'telugu': {
-        'channel': '-1002822738923',
-        'display_name': 'Telugu',
-        'flag': '🇮🇳'
-    },
-    
-    'sinhala': {
-        'channel': '-1002614174192',  # Using common channel for now, replace with dedicated Sinhala channel ID
-        'display_name': 'Sinhala',
-        'flag': '🇱🇰'
+        'display_name': 'All Movies',
+        'flag': '🌐'
     }
 }
 
-def get_language_info(language: str) -> dict:
-    """Get language information"""
-    return LANGUAGE_CHANNELS.get(language.lower(), LANGUAGE_CHANNELS['english'])
+def get_required_channels():
+    """Get list of all required channels"""
+    return [ch['channel'] for ch in REQUIRED_CHANNELS]
 
-def get_all_languages() -> list:
-    """Get all supported languages"""
+def get_channel_info(channel_id):
+    """Get channel information by ID"""
+    for ch in REQUIRED_CHANNELS:
+        if ch['channel'] == channel_id:
+            return ch
+    return None
+
+def get_all_languages():
+    """Get all available languages"""
     return list(LANGUAGE_CHANNELS.keys())
 
-def get_language_channels(language: str) -> list:
-    """Get channels for a specific language (common + language-specific)"""
-    lang_info = get_language_info(language)
-    return [COMMON_CHANNEL, lang_info['channel']]
-
-def get_language_channel(language: str) -> str:
-    """Get the specific channel for a language"""
-    lang_info = get_language_info(language)
-    return lang_info['channel']
-
-def get_language_display_name(language: str) -> str:
+def get_language_display_name(language):
     """Get display name for a language"""
-    lang_info = get_language_info(language)
-    return f"{lang_info['flag']} {lang_info['display_name']}"
+    return LANGUAGE_CHANNELS.get(language, {}).get('display_name', language.title())
+
+def get_language_channel(language):
+    """Get channel ID for a language"""
+    return LANGUAGE_CHANNELS.get(language, {}).get('channel', COMMON_CHANNEL)
+
+def get_language_channels():
+    """Get all language channels"""
+    return LANGUAGE_CHANNELS

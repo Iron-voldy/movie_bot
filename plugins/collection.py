@@ -21,9 +21,10 @@ async def show_collection_menu(client: Client, query: CallbackQuery):
         buttons = [
             [
                 InlineKeyboardButton("🔥 Popular Movies", callback_data="popular_movies#0"),
-                InlineKeyboardButton("🆕 Latest Added", callback_data="latest_movies#0")
+                InlineKeyboardButton("🧪 Test Collection", callback_data="test_collection")
             ],
             [
+                InlineKeyboardButton("🆕 Latest Added", callback_data="latest_movies#0"),
                 InlineKeyboardButton("🎲 Random Movies", callback_data="random_movies#0")
             ],
             [
@@ -49,10 +50,14 @@ async def show_collection_menu(client: Client, query: CallbackQuery):
 async def show_popular_movies(client: Client, query: CallbackQuery):
     """Show popular movies with pagination"""
     try:
+        logger.info(f"Popular movies callback triggered: {query.data}")
         page = int(query.data.split("#")[1])
+        logger.info(f"Page number: {page}")
         await show_movie_list(query, POPULAR_MOVIES, "🔥 Popular Movies", "popular_movies", page)
     except Exception as e:
         logger.error(f"Error showing popular movies: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         await query.answer("❌ An error occurred. Please try again.")
 
 @Client.on_callback_query(filters.regex(r"^latest_movies#(\d+)"))
@@ -80,79 +85,87 @@ async def show_random_movies(client: Client, query: CallbackQuery):
 
 async def show_movie_list(query: CallbackQuery, movies: list, title: str, callback_prefix: str, page: int):
     """Display paginated movie list"""
-    start_idx = page * MOVIES_PER_PAGE
-    end_idx = start_idx + MOVIES_PER_PAGE
-    page_movies = movies[start_idx:end_idx]
-    
-    if not page_movies:
-        await query.answer("No more movies available.", show_alert=True)
-        return
-    
-    # Build movie list text
-    text = f"{title}\n\n"
-    
-    for i, movie in enumerate(page_movies, 1):
-        movie_num = start_idx + i
-        text += f"**{movie_num}. {movie['name']}**\n"
-        text += f"⭐ **Rating:** {movie['rating']}\n"
-        text += f"📝 **Description:** {movie['description']}\n\n"
-        
-        # Add search button for each movie
-        text += f"🔍 [Search for {movie['name']}](https://t.me/{query.from_user.username}?start=search_{movie['name'].replace(' ', '_').replace(':', '')})\n\n"
-        text += "─" * 40 + "\n\n"
-    
-    # Navigation buttons
-    buttons = []
-    nav_buttons = []
-    
-    # Previous page button
-    if page > 0:
-        nav_buttons.append(
-            InlineKeyboardButton("⬅️ Previous", callback_data=f"{callback_prefix}#{page-1}")
-        )
-    
-    # Page indicator
-    total_pages = (len(movies) - 1) // MOVIES_PER_PAGE + 1
-    nav_buttons.append(
-        InlineKeyboardButton(f"📄 {page + 1}/{total_pages}", callback_data="pages_info")
-    )
-    
-    # Next page button
-    if end_idx < len(movies):
-        nav_buttons.append(
-            InlineKeyboardButton("➡️ Next", callback_data=f"{callback_prefix}#{page+1}")
-        )
-    
-    if nav_buttons:
-        buttons.append(nav_buttons)
-    
-    # Action buttons
-    action_buttons = [
-        InlineKeyboardButton("🔄 Refresh List", callback_data=f"{callback_prefix}#{page}"),
-        InlineKeyboardButton("🔙 Back to Collection", callback_data="collection")
-    ]
-    buttons.append(action_buttons)
-    
-    # Search all button
-    buttons.append([
-        InlineKeyboardButton("🔍 Search All Movies", switch_inline_query_current_chat="")
-    ])
-    
     try:
+        logger.info(f"Showing movie list: {title}, page: {page}")
+        start_idx = page * MOVIES_PER_PAGE
+        end_idx = start_idx + MOVIES_PER_PAGE
+        page_movies = movies[start_idx:end_idx]
+        
+        if not page_movies:
+            await query.answer("No more movies available.", show_alert=True)
+            return
+        
+        # Build movie list text
+        text = f"{title}\n\n"
+        
+        for i, movie in enumerate(page_movies, 1):
+            movie_num = start_idx + i
+            text += f"**{movie_num}. {movie['name']}**\n"
+            text += f"⭐ **Rating:** {movie['rating']}\n"
+            
+            # Truncate description if too long
+            description = movie['description']
+            if len(description) > 150:
+                description = description[:150] + "..."
+            
+            text += f"📝 **Description:** {description}\n\n"
+            text += "─" * 30 + "\n\n"
+        
+        # Navigation buttons
+        buttons = []
+        nav_buttons = []
+        
+        # Previous page button
+        if page > 0:
+            nav_buttons.append(
+                InlineKeyboardButton("⬅️ Previous", callback_data=f"{callback_prefix}#{page-1}")
+            )
+        
+        # Page indicator
+        total_pages = (len(movies) - 1) // MOVIES_PER_PAGE + 1
+        nav_buttons.append(
+            InlineKeyboardButton(f"📄 {page + 1}/{total_pages}", callback_data="pages_info")
+        )
+        
+        # Next page button
+        if end_idx < len(movies):
+            nav_buttons.append(
+                InlineKeyboardButton("➡️ Next", callback_data=f"{callback_prefix}#{page+1}")
+            )
+        
+        if nav_buttons:
+            buttons.append(nav_buttons)
+        
+        # Action buttons
+        action_buttons = [
+            InlineKeyboardButton("🔄 Refresh List", callback_data=f"{callback_prefix}#{page}"),
+            InlineKeyboardButton("🔙 Back to Collection", callback_data="collection")
+        ]
+        buttons.append(action_buttons)
+        
+        # Search all button
+        buttons.append([
+            InlineKeyboardButton("🔍 Search All Movies", switch_inline_query_current_chat="")
+        ])
+        
         await query.message.edit_text(
             text,
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="markdown",
             disable_web_page_preview=True
         )
+        
     except Exception as e:
-        logger.error(f"Error editing message: {e}")
-        # If edit fails, send new message
-        await query.message.reply_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode="markdown",
-            disable_web_page_preview=True
+        logger.error(f"Error in show_movie_list: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        # Send simple error message
+        await query.message.edit_text(
+            f"❌ Error loading {title}\n\nPlease try again later.",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔙 Back to Collection", callback_data="collection")
+            ]])
         )
 
 @Client.on_callback_query(filters.regex(r"^back_to_main$"))
@@ -160,9 +173,6 @@ async def back_to_main_menu(client: Client, query: CallbackQuery):
     """Go back to the main bot menu"""
     try:
         from utils import temp
-        from info import PICS
-        import random
-        from Script import script
         
         buttons = [[
             InlineKeyboardButton('🎬 Search Movies', switch_inline_query_current_chat=''),
@@ -176,9 +186,13 @@ async def back_to_main_menu(client: Client, query: CallbackQuery):
         ]]
         
         await query.message.edit_text(
-            script.START_TXT.format(query.from_user.mention, temp.U_NAME, temp.B_NAME),
+            f"🎬 **Welcome to {temp.B_NAME}!**\n\n"
+            "🔍 Search movies using inline mode\n"
+            "🎭 Browse our movie collection\n"
+            "🗣️ Get subtitles in multiple languages\n\n"
+            "Choose an option below:",
             reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode="html"
+            parse_mode="markdown"
         )
         
     except Exception as e:

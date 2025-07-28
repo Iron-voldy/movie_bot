@@ -23,7 +23,7 @@ import time, psutil
 async def start(client, message):
     # Import required modules at the top
     from database.users_chats_db import db
-    from .channel_handler import check_user_subscriptions, create_subscription_buttons, show_language_selection
+    from .simple_channel_handler import check_user_channels, create_join_buttons
     
     if message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
         buttons = [
@@ -48,7 +48,28 @@ async def start(client, message):
             await client.send_message(LOG_CHANNEL, script.LOG_TEXT_P.format(message.from_user.id, message.from_user.mention))
         except Exception as e:
             logger.error(f"Failed to send log message: {e}")
+    # Check if user is subscribed to required channels (skip language selection)
+    is_subscribed_all, missing_channels = await check_user_channels(client, message.from_user.id)
+    
+    if not is_subscribed_all:
+        # User needs to join channels
+        join_buttons = await create_join_buttons(client, missing_channels)
+        
+        await message.reply_text(
+            "🎬 **Welcome to Movie Bot!**\n\n"
+            "❌ **Access Denied**\n\n"
+            "You must join **both channels** below to use this bot:\n\n"
+            "📋 **Required Channels:**\n"
+            "• Movies Channel 1\n"
+            "• Movies Channel 2\n\n"
+            "Please join both channels and click 'Check Again':",
+            reply_markup=join_buttons,
+            parse_mode=enums.ParseMode.MARKDOWN
+        )
+        return
+    
     if len(message.command) != 2:
+        # User is subscribed, show main menu
         buttons = [[
                     InlineKeyboardButton('🎬 Search Movies', switch_inline_query_current_chat=''),
                     InlineKeyboardButton('🎭 Browse Collection', callback_data='collection')
@@ -62,47 +83,13 @@ async def start(client, message):
         reply_markup = InlineKeyboardMarkup(buttons)
         await message.reply_photo(
             photo=random.choice(PICS),
-            caption=script.START_TXT.format(message.from_user.mention, temp.U_NAME, temp.B_NAME),
+            caption=f"🎉 **Welcome {message.from_user.mention}!**\n\n"
+                   f"✅ You have access to **{temp.B_NAME}**\n\n"
+                   f"🎬 Search movies using inline mode\n"
+                   f"🎭 Browse our movie collection\n"
+                   f"🔍 All movies with subtitles available!\n\n"
+                   f"Choose an option below:",
             reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-        return
-    # Check user's language preference
-    
-    user_language = await db.get_user_language(message.from_user.id)
-    
-    if not user_language:
-        # User hasn't selected a language yet
-        language_buttons = await show_language_selection(client, message.from_user.id)
-        await client.send_message(
-            chat_id=message.from_user.id,
-            text="🌐 **Welcome!** Please select your language to continue:\n\n"
-                 "You'll need to join 2 channels:\n"
-                 "1. Common Updates Channel (for all users)\n"
-                 "2. Language-specific Channel (for your chosen language)",
-            reply_markup=language_buttons,
-            parse_mode=enums.ParseMode.MARKDOWN
-        )
-        return
-    
-    # Check if user is subscribed to required channels
-    is_subscribed_all, missing_channels, _ = await check_user_subscriptions(client, message.from_user.id, user_language)
-    
-    if not is_subscribed_all:
-        # User needs to join channels
-        subscription_buttons = await create_subscription_buttons(
-            client, message.from_user.id, user_language, f"check_subscription_{user_language}"
-        )
-        
-        from language_config import get_language_display_name
-        await client.send_message(
-            chat_id=message.from_user.id,
-            text=f"🎯 **Your Language**: {get_language_display_name(user_language)}\n\n"
-                 "📋 **Required Channels:**\n"
-                 "1. Common Updates Channel (for all users)\n"
-                 f"2. {get_language_display_name(user_language)} Channel (for your language)\n\n"
-                 "Please join both channels to continue:",
-            reply_markup=subscription_buttons,
             parse_mode=enums.ParseMode.MARKDOWN
         )
         return

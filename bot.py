@@ -117,26 +117,17 @@ async def main():
     import os
     
     app = Bot()
-    health_server_task = None
     
     # Handle shutdown signals
     def signal_handler(signum, frame):
         logger.info(f"Stop signal received ({signal.Signals(signum).name}). Exiting...")
         asyncio.create_task(app.stop())
-        if health_server_task:
-            health_server_task.cancel()
     
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
     try:
-        # Start health server for Railway (if PORT is set)
-        if os.environ.get('PORT'):
-            from health_server import run_health_server
-            health_server_task = asyncio.create_task(run_health_server())
-            logger.info("Health server started for Railway deployment")
-        
         await app.start()
         logger.info("Bot is running... Press Ctrl+C to stop.")
         await idle()  # Keep the bot running
@@ -145,8 +136,6 @@ async def main():
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
     finally:
-        if health_server_task:
-            health_server_task.cancel()
         await app.stop()
 
 if __name__ == "__main__":

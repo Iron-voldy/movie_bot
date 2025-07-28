@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -name \"*.env*\" -o -name \"*.config*\" -o -name \".env\")",
+      "Bash(ls -la)"
+    ],
+    "deny": []
+  }
+}

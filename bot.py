@@ -116,6 +116,12 @@ async def main():
     import signal
     import os
     
+    # Debug: Print environment info
+    logger.info("=== Bot Starting ===")
+    logger.info(f"BOT_TOKEN present: {'BOT_TOKEN' in os.environ}")
+    logger.info(f"API_ID: {API_ID}")
+    logger.info(f"API_HASH present: {bool(API_HASH)}")
+    
     app = Bot()
     
     # Handle shutdown signals
@@ -128,6 +134,7 @@ async def main():
     signal.signal(signal.SIGTERM, signal_handler)
     
     try:
+        logger.info("Starting bot...")
         await app.start()
         logger.info("Bot is running... Press Ctrl+C to stop.")
         await idle()  # Keep the bot running
@@ -135,8 +142,13 @@ async def main():
         logger.info("Keyboard interrupt received. Stopping...")
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
     finally:
-        await app.stop()
+        try:
+            await app.stop()
+        except Exception as e:
+            logger.error(f"Error during stop: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())

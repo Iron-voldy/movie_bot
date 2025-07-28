@@ -12,7 +12,15 @@ def is_enabled(value, default):
 # PyroClient Setup 
 API_ID = int(environ.get('API_ID', '3135143'))
 API_HASH = environ.get('API_HASH', '24f97a7491f6fc888eeff31694c061bf')
-BOT_TOKEN = environ.get('BOT_TOKEN', '')
+BOT_TOKEN = environ.get('BOT_TOKEN')
+
+# Validate bot token
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN environment variable is required!")
+if not BOT_TOKEN.strip():
+    raise ValueError("BOT_TOKEN cannot be empty!")
+if ':' not in BOT_TOKEN:
+    raise ValueError("Invalid BOT_TOKEN format!")
 
 # Bot settings
 WEB_SUPPORT = bool(environ.get("WEBHOOK", 'True')) # for web support on/off

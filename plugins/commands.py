@@ -429,3 +429,107 @@ async def send_movie_with_subtitles(client, message, file_id, subtitle_language)
     finally:
         # Close subtitle handler session
         await subtitle_handler.close_session()
+
+@Client.on_callback_query(filters.regex(r"^about$"))
+async def about_bot(client: Client, query):
+    """Show bot information"""
+    try:
+        from utils import temp
+        
+        about_text = f"""ℹ️ **About {temp.B_NAME}**
+
+🤖 **Bot Name:** {temp.B_NAME}
+👨‍💻 **Developer:** [Hasindu Theekshana](https://t.me/Iron_voldy)
+🔗 **GitHub:** [Iron-voldy](https://github.com/Iron-voldy)
+
+📋 **Features:**
+• 🎬 Movie Search & Download
+• 🗣️ Multi-language Subtitles
+• 🎭 Movie Collection Browser
+• 🔍 Inline Search Support
+• 📱 Group & Channel Support
+
+💡 **How to Use:**
+1. Search movies using inline mode
+2. Browse collections for popular movies
+3. Select your language for subtitles
+4. Join required channels to access content
+
+🆘 **Need Help?** Use /help command
+🔄 **Updates:** @SECL4U"""
+
+        buttons = [[
+            InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_main"),
+            InlineKeyboardButton("❓ Help", callback_data="help")
+        ],[
+            InlineKeyboardButton("📢 Updates Channel", url="https://t.me/SECL4U"),
+            InlineKeyboardButton("👨‍💻 Developer", url="https://t.me/Iron_voldy")
+        ]]
+        
+        await query.message.edit_text(
+            about_text,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode="markdown",
+            disable_web_page_preview=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Error showing about: {e}")
+        await query.answer("❌ An error occurred. Please try again.")
+
+@Client.on_callback_query(filters.regex(r"^help$"))
+async def help_bot(client: Client, query):
+    """Show help information"""
+    try:
+        from utils import temp
+        
+        help_text = f"""❓ **Help & Support - {temp.B_NAME}**
+
+🔍 **How to Search Movies:**
+• Type movie name in inline mode: `@{temp.U_NAME} movie name`
+• Use the 🎬 Search Movies button
+• Browse collections with 🎭 Browse Collection
+
+🗣️ **Language Selection:**
+• Select your language when you first start
+• Join required channels for your language
+• Bot will provide movies with subtitles
+
+🎭 **Collection Features:**
+• 🔥 Popular Movies - Most watched films
+• 🆕 Latest Added - Recently added content  
+• 🎲 Random Movies - Discover new films
+
+📱 **Commands:**
+• `/start` - Start the bot
+• `/ping` - Check bot status
+• Use inline search for best results
+
+🔧 **Troubleshooting:**
+• Join all required channels
+• Make sure you've selected a language
+• Contact support if issues persist
+
+📞 **Support:**
+• Updates: @SECL4U
+• Developer: @Iron_voldy
+• Issues: Report in support group"""
+
+        buttons = [[
+            InlineKeyboardButton("🔙 Back to Menu", callback_data="back_to_main"),
+            InlineKeyboardButton("ℹ️ About", callback_data="about")
+        ],[
+            InlineKeyboardButton("📢 Support Channel", url="https://t.me/SECL4U"),
+            InlineKeyboardButton("🎬 Try Search", switch_inline_query_current_chat="")
+        ]]
+        
+        await query.message.edit_text(
+            help_text,
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode="markdown",
+            disable_web_page_preview=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Error showing help: {e}")
+        await query.answer("❌ An error occurred. Please try again.")

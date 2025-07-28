@@ -248,9 +248,9 @@ Movie: {subtitle_info['release']}
         return None
     
     def get_language_channels(self, language: str) -> List[str]:
-        """Get language-specific channels based on selected language"""
-        from language_config import get_language_channels
-        return get_language_channels(language)
+        """Get required channels (simplified - no language-specific channels)"""
+        from language_config import get_required_channels
+        return get_required_channels()
     
     def get_supported_languages(self) -> List[str]:
         """Get list of supported subtitle languages"""

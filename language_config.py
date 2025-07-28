@@ -106,6 +106,7 @@ def get_language_channel(language):
     """Legacy function - now returns common channel for all languages"""
     return COMMON_CHANNEL
 
-def get_language_channels():
+def get_language_channels(*args):
     """Legacy function - now returns subtitle languages for compatibility"""
+    # Accept any arguments for backward compatibility but ignore them
     return SUBTITLE_LANGUAGES

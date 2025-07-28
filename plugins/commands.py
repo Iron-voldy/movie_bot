@@ -272,6 +272,36 @@ async def ping(client, message):
     end_time = time.monotonic()
     await msg.edit(f'{round((end_time - start_time) * 1000)} ms')
 
+@Client.on_message(filters.command('checkme') & filters.user(ADMINS))
+async def check_my_channels(client, message):
+    """Debug command to check admin's channel membership"""
+    try:
+        from .simple_channel_handler import check_user_channels
+        
+        user_id = message.from_user.id
+        is_subscribed, missing = await check_user_channels(client, user_id)
+        
+        response = f"🔍 **Channel Check for User {user_id}**\n\n"
+        response += f"✅ **Is Subscribed**: {is_subscribed}\n"
+        response += f"❌ **Missing Channels**: {missing}\n\n"
+        
+        # Check each channel individually
+        from language_config import get_required_channels
+        for channel_id in get_required_channels():
+            try:
+                member = await client.get_chat_member(int(channel_id), user_id)
+                chat = await client.get_chat(int(channel_id))
+                response += f"📢 **{chat.title}** (`{channel_id}`)\n"
+                response += f"   Status: `{member.status}`\n\n"
+            except Exception as e:
+                response += f"📢 **Channel {channel_id}**\n"
+                response += f"   Error: `{str(e)}`\n\n"
+        
+        await message.reply(response, parse_mode="markdown")
+        
+    except Exception as e:
+        await message.reply(f"❌ Error checking channels: {e}")
+
 
 async def send_movie_with_subtitles(client, message, file_id, subtitle_language):
     """Send movie file with subtitles"""

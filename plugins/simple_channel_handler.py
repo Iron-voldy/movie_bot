@@ -16,50 +16,91 @@ async def check_user_channels(client: Client, user_id: int) -> tuple:
     Check if user is subscribed to both required channels
     Returns (is_subscribed, missing_channels)
     """
+    from info import ADMINS
+    
+    # Always allow admins
+    if user_id in ADMINS:
+        logger.info(f"User {user_id} is admin - granting access")
+        return True, []
+    
     missing_channels = []
     required_channel_ids = get_required_channels()
     
+    logger.info(f"Checking channels for user {user_id}: {required_channel_ids}")
+    
     for channel_id in required_channel_ids:
         try:
-            subscribed = await is_subscribed(client, user_id, int(channel_id))
-            logger.info(f"User {user_id} subscription to {channel_id}: {subscribed}")
-            if not subscribed:
+            # Direct channel member check
+            member = await client.get_chat_member(int(channel_id), user_id)
+            logger.info(f"User {user_id} status in {channel_id}: {member.status}")
+            
+            # Check if user is actually a member (not just in db)
+            if member.status in ["creator", "administrator", "member"]:
+                logger.info(f"✅ User {user_id} IS member of {channel_id}")
+            else:
+                logger.info(f"❌ User {user_id} NOT member of {channel_id} (status: {member.status})")
                 missing_channels.append(int(channel_id))
+                
         except Exception as e:
-            logger.error(f"Error checking subscription for {channel_id}: {e}")
+            logger.error(f"❌ Error checking {channel_id} for user {user_id}: {e}")
             missing_channels.append(int(channel_id))
     
-    logger.info(f"User {user_id} missing channels: {missing_channels}")
-    return len(missing_channels) == 0, missing_channels
+    is_all_subscribed = len(missing_channels) == 0
+    logger.info(f"Final result for user {user_id}: subscribed={is_all_subscribed}, missing={missing_channels}")
+    
+    return is_all_subscribed, missing_channels
 
 async def create_join_buttons(client: Client, missing_channels: list) -> InlineKeyboardMarkup:
-    """Create buttons for joining missing channels"""
+    """Create buttons for joining missing channels with direct links"""
     buttons = []
+    
+    # Direct links to the channels (you need to provide the actual usernames or invite links)
+    channel_links = {
+        -1002766947260: "https://t.me/+your_invite_link_1",  # Replace with actual invite link
+        -1002886647880: "https://t.me/+your_invite_link_2"   # Replace with actual invite link
+    }
     
     for channel_id in missing_channels:
         try:
             chat = await client.get_chat(channel_id)
-            # Try to create invite link
-            try:
-                invite_link = await client.create_chat_invite_link(channel_id, creates_join_request=False)
+            
+            # Try to get direct link first
+            if channel_id in channel_links:
                 button_text = f"✇ Join {chat.title} ✇"
                 buttons.append([
-                    InlineKeyboardButton(button_text, url=invite_link.invite_link)
+                    InlineKeyboardButton(button_text, url=channel_links[channel_id])
                 ])
-            except Exception as e:
-                logger.error(f"Could not create invite link for {channel_id}: {e}")
-                # Fallback - use channel username if available
-                if chat.username:
+                logger.info(f"Using predefined link for {channel_id}")
+            else:
+                # Try to create invite link
+                try:
+                    invite_link = await client.create_chat_invite_link(channel_id, creates_join_request=False)
+                    button_text = f"✇ Join {chat.title} ✇"
                     buttons.append([
-                        InlineKeyboardButton(f"✇ Join {chat.title} ✇", url=f"https://t.me/{chat.username}")
+                        InlineKeyboardButton(button_text, url=invite_link.invite_link)
                     ])
-                else:
-                    buttons.append([
-                        InlineKeyboardButton(f"✇ Join {chat.title} ✇", callback_data=f"manual_join_{channel_id}")
-                    ])
+                    logger.info(f"Created invite link for {channel_id}: {invite_link.invite_link}")
+                except Exception as e:
+                    logger.error(f"Could not create invite link for {channel_id}: {e}")
+                    # Fallback - use channel username if available
+                    if hasattr(chat, 'username') and chat.username:
+                        buttons.append([
+                            InlineKeyboardButton(f"✇ Join @{chat.username} ✇", url=f"https://t.me/{chat.username}")
+                        ])
+                        logger.info(f"Using username link for {channel_id}: @{chat.username}")
+                    else:
+                        # Manual join instruction
+                        buttons.append([
+                            InlineKeyboardButton(f"📢 {chat.title} (Manual Join)", callback_data=f"manual_join_{channel_id}")
+                        ])
+                        logger.error(f"No direct link available for {channel_id}")
+                        
         except Exception as e:
             logger.error(f"Error creating button for channel {channel_id}: {e}")
-            continue
+            # Add fallback button even if chat info fails
+            buttons.append([
+                InlineKeyboardButton(f"✇ Join Channel {channel_id} ✇", callback_data=f"manual_join_{channel_id}")
+            ])
     
     # Add check again button
     buttons.append([

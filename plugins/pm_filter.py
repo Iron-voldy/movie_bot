@@ -20,7 +20,7 @@ import logging, random, psutil
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-async def send_subtitle_file(bot, user_id, movie_name, language, display_name, flag):
+async def send_subtitle_file(client, user_id, movie_name, language, display_name, flag):
     """Generate and send subtitle file for the selected language"""
     try:
         logger.info(f"send_subtitle_file: Starting for {movie_name} in {language}")
@@ -44,7 +44,7 @@ async def send_subtitle_file(bot, user_id, movie_name, language, display_name, f
                 
                 # Send subtitle as document
                 logger.info(f"Sending subtitle file: {subtitle_filename}")
-                await bot.send_document(
+                await client.send_document(
                     chat_id=user_id,
                     document=subtitle_content,
                     file_name=subtitle_filename,
@@ -60,7 +60,7 @@ async def send_subtitle_file(bot, user_id, movie_name, language, display_name, f
                 return True
         
         # If no subtitles found, send a message
-        await bot.send_message(
+        await client.send_message(
             chat_id=user_id,
             text=f"📝 **{flag} {display_name} Subtitles**\n\n"
                  f"❌ No subtitles available for this movie in {display_name}.\n"
@@ -75,7 +75,7 @@ async def send_subtitle_file(bot, user_id, movie_name, language, display_name, f
     except Exception as e:
         logger.error(f"Error sending subtitle file: {e}")
         # Send error message
-        await bot.send_message(
+        await client.send_message(
             chat_id=user_id,
             text=f"📝 **Subtitle Error**\n\n"
                  f"❌ Error generating {display_name} subtitles.\n"
@@ -117,7 +117,7 @@ async def pm_text(bot, message):
     user_id = message.from_user.id
     if content.startswith("/") or content.startswith("#"): return  # ignore commands and hashtags
     if user_id in ADMINS: return # ignore admins
-    await bot.send_message(
+    await client.send_message(
         chat_id=LOG_CHANNEL,
         text=f"#PM_Message\nUser: {user} ({user_id})\nMessage: {content}"
     )        
@@ -534,7 +534,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 logger.info(f"Document ID: {file_info['_id']}")
                 logger.info(f"Caption: {f_caption[:100]}...")
                 
-                await bot.send_document(
+                await client.send_document(
                     chat_id=query.from_user.id,
                     document=file_info['_id'],
                     caption=f_caption,
@@ -547,7 +547,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 
                 # Generate and send subtitle file
                 logger.info("About to send subtitle file")
-                await send_subtitle_file(bot, query.from_user.id, file_info['file_name'], language, display_name, flag)
+                await send_subtitle_file(client, query.from_user.id, file_info['file_name'], language, display_name, flag)
                 
                 # Update final message
                 logger.info("Updating final success message")
@@ -648,7 +648,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 else:
                     f_caption = f"{file_info['file_name']}"
                 
-                await bot.send_document(
+                await client.send_document(
                     chat_id=query.from_user.id,
                     document=file_info['_id'],
                     caption=f_caption,

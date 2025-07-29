@@ -328,10 +328,17 @@ async def cb_handler(client: Client, query: CallbackQuery):
             subscription_buttons = await create_join_buttons(client, missing_channels)
             
             await query.message.edit_text(
-                f"🔒 **File Access Restricted**\n\n"
-                f"You must join **all required channels** below to access this file:\n\n"
-                f"Please use the numbered buttons below to join and then click 'Check Again':",
-                reply_markup=subscription_buttons
+                "🔐 **Premium Content Access**\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎬 **Exclusive Movie Access**\n\n"
+                "This premium content requires membership in our official channels.\n\n"
+                "🎯 **Quick Access:**\n"
+                "1️⃣ Click the buttons below to join\n"
+                "2️⃣ Return here and click '🔄 Check Again'\n"
+                "3️⃣ Enjoy unlimited access!\n\n"
+                "👇 **Join Our Channels:**",
+                reply_markup=subscription_buttons,
+                parse_mode="markdown"
             )
             return
         
@@ -609,10 +616,18 @@ async def auto_filter(client, msg, spoll=False):
             subscription_buttons = await create_join_buttons(client, missing_channels)
             
             await message.reply(
-                f"🔒 **Access Restricted**\n\n"
-                f"You must join **all required channels** below to use this bot:\n\n"
-                f"Please use the numbered buttons below to join and then click 'Check Again':",
-                reply_markup=subscription_buttons
+                "🚫 **Channel Membership Required**\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎭 **Welcome to our Movie Bot!**\n\n"
+                "To search and download movies, join our official channels first.\n\n"
+                "🎯 **Easy Steps:**\n"
+                "1️⃣ Click the numbered buttons below\n"
+                "2️⃣ Join each channel\n"
+                "3️⃣ Come back and click '🔄 Check Again'\n\n"
+                "🎬 **Unlimited Access Awaits!**\n\n"
+                "👇 **Join Now:**",
+                reply_markup=subscription_buttons,
+                parse_mode="markdown"
             )
             return
 

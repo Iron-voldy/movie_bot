@@ -127,10 +127,17 @@ async def start(client, message):
             # User needs to join required channels
             subscription_buttons = await create_join_buttons(client, missing_channels)
             await message.reply_text(
-                f"🔒 **File Access Restricted**\n\n"
-                f"You must join **all required channels** below to access this file:\n\n"
-                f"Please use the numbered buttons below to join and then try again:",
-                reply_markup=subscription_buttons
+                "🔐 **Premium Movie Access**\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎬 **Subtitle Movie Request**\n\n"
+                "To access movies with subtitles, join our official channels first.\n\n"
+                "🎯 **Quick Steps:**\n"
+                "1️⃣ Click the buttons below to join\n"
+                "2️⃣ Return and try your request again\n"
+                "3️⃣ Enjoy movies with subtitles!\n\n"
+                "👇 **Join Our Channels:**",
+                reply_markup=subscription_buttons,
+                parse_mode="markdown"
             )
             return
             

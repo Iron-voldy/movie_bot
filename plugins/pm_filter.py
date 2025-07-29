@@ -18,7 +18,7 @@ from real_subtitle_handler import real_subtitle_handler as subtitle_handler
 import logging, random, psutil
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.INFO)
 
 async def send_subtitle_file(bot, user_id, movie_name, language, display_name, flag):
     """Generate and send subtitle file for the selected language"""
@@ -436,12 +436,23 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data.startswith("subtitle"):
         # Handle subtitle selection - send movie and subtitle files directly
         try:
-            ident, file_id, language = query.data.split("#")
+            logger.info(f"Processing subtitle callback: {query.data}")
+            
+            # Parse callback data
+            parts = query.data.split("#")
+            if len(parts) != 3:
+                logger.error(f"Invalid callback data format: {query.data}")
+                await query.answer("❌ Invalid request format. Please try again.", show_alert=True)
+                return
+                
+            ident, file_id, language = parts
+            logger.info(f"Parsed - ident: {ident}, file_id: {file_id}, language: {language}")
             
             # Get language display info
             from language_config import get_language_display_name, get_language_flag
             flag = get_language_flag(language)
             display_name = get_language_display_name(language)
+            logger.info(f"Language info - flag: {flag}, display_name: {display_name}")
             
             # Update message to show processing
             await query.message.edit_text(
@@ -452,8 +463,12 @@ async def cb_handler(client: Client, query: CallbackQuery):
             )
             
             # Get movie file details
+            logger.info(f"Getting file details for file_id: {file_id}")
             files = await get_file_details(file_id)
+            logger.info(f"Retrieved files: {len(files) if files else 0}")
+            
             if not files:
+                logger.error(f"No files found for file_id: {file_id}")
                 await query.message.edit_text(
                     "❌ **Movie file not found**\n\n" 
                     "Sorry, the requested movie file is no longer available.",
@@ -464,6 +479,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 return
             
             file_info = files[0]
+            logger.info(f"File info: {file_info['file_name']}, size: {file_info['file_size']}")
             
             # Send the movie file
             await query.message.edit_text(
@@ -523,6 +539,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
             
         except Exception as e:
             logger.error(f"Error handling subtitle selection: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             await query.answer("❌ Error processing selection. Please try again.", show_alert=True)
     
     elif query.data.startswith("no_sub"):

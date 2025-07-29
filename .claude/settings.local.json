@@ -7,7 +7,8 @@
       "Bash(rm:*)",
       "Bash(pip install:*)",
       "Bash(pip --version)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

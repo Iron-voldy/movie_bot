@@ -5,49 +5,79 @@ Contains popular movies, latest releases, and random selections
 
 POPULAR_MOVIES = [
     {
-        "name": "Avatar: The Way of Water",
-        "rating": "7.6/10",
-        "description": "Jake Sully lives with his newfound family formed on the planet of Pandora. Once a familiar threat returns to finish what was previously started, Jake must work with Neytiri and the army of the Na'vi race to protect their planet."
+        "name": "The Shawshank Redemption",
+        "rating": "9.3/10",
+        "description": "Two imprisoned men bond over years, finding solace and redemption."
     },
     {
-        "name": "Top Gun: Maverick", 
+        "name": "The Godfather",
+        "rating": "9.2/10",
+        "description": "The aging patriarch of an organized crime dynasty transfers control."
+    },
+    {
+        "name": "The Dark Knight",
+        "rating": "9.0/10",
+        "description": "Batman faces the Joker in a battle for Gotham City's soul."
+    },
+    {
+        "name": "Avatar: The Way of Water",
+        "rating": "7.6/10",
+        "description": "Jake Sully protects his family on Pandora from returning threats."
+    },
+    {
+        "name": "Top Gun: Maverick",
         "rating": "8.3/10",
-        "description": "After thirty years, Maverick is still pushing the envelope as a top naval aviator, but must confront ghosts of his past when he leads TOP GUN's elite graduates on a mission that demands the ultimate sacrifice from those chosen to fly it."
+        "description": "Maverick trains TOP GUN graduates for a dangerous mission."
     },
     {
         "name": "Spider-Man: No Way Home",
-        "rating": "8.2/10", 
-        "description": "With Spider-Man's identity now revealed, Peter asks Doctor Strange for help. When a spell goes wrong, dangerous foes from other worlds start to appear, forcing Peter to discover what it truly means to be Spider-Man."
+        "rating": "8.2/10",
+        "description": "Peter Parker faces villains from other dimensions."
     },
     {
-        "name": "The Batman",
-        "rating": "7.8/10",
-        "description": "When a sadistic serial killer begins murdering key political figures in Gotham, Batman is forced to investigate the city's hidden corruption and question his family's involvement."
+        "name": "Pulp Fiction",
+        "rating": "8.9/10",
+        "description": "Interconnected stories of crime in Los Angeles."
     },
     {
-        "name": "Black Panther: Wakanda Forever",
-        "rating": "6.7/10",
-        "description": "The people of Wakanda fight to protect their home from intervening world powers as they mourn the death of King T'Challa."
+        "name": "The Lord of the Rings",
+        "rating": "8.8/10",
+        "description": "Hobbits and allies battle to destroy the One Ring."
     },
     {
-        "name": "Jurassic World Dominion",
-        "rating": "5.6/10",
-        "description": "Four years after the destruction of Isla Nublar, dinosaurs now live and hunt alongside humans all over the world. This fragile balance will reshape the future and determine, once and for all, whether human beings are to remain the apex predators on a planet they now share with history's most fearsome creatures."
+        "name": "Forrest Gump",
+        "rating": "8.8/10",
+        "description": "Simple man witnesses and influences historical events."
     },
     {
-        "name": "Doctor Strange in the Multiverse of Madness",
-        "rating": "6.9/10",
-        "description": "Doctor Strange teams up with a mysterious teenage girl from his dreams who can travel across multiverses, to battle multiple threats, including other-universe versions of himself, which threaten to wipe out millions across the multiverse."
+        "name": "Inception",
+        "rating": "8.8/10",
+        "description": "Thief enters dreams to plant an idea in someone's mind."
     },
     {
-        "name": "Thor: Love and Thunder",
-        "rating": "6.2/10",
-        "description": "Thor enlists the help of Valkyrie, Korg and ex-girlfriend Jane Foster to fight Gorr the God Butcher, who intends to make the gods extinct."
+        "name": "Fight Club",
+        "rating": "8.8/10",
+        "description": "Insomniac creates underground fight club with mysterious friend."
     },
     {
-        "name": "Minions: The Rise of Gru",
-        "rating": "6.5/10",
-        "description": "The untold story of one twelve-year-old's dream to become the world's greatest supervillain, in the 1970s when superstars like The Bee Gees dominated the charts."
+        "name": "The Matrix",
+        "rating": "8.7/10",
+        "description": "Hacker discovers reality is a computer simulation."
+    },
+    {
+        "name": "Goodfellas",
+        "rating": "8.7/10",
+        "description": "Rise and fall of mob associate Henry Hill."
+    },
+    {
+        "name": "Interstellar",
+        "rating": "8.6/10",
+        "description": "Farmer leads mission through wormhole to save humanity."
+    },
+    {
+        "name": "The Silence of the Lambs",
+        "rating": "8.6/10",
+        "description": "FBI trainee seeks help from imprisoned cannibal."
     },
     {
         "name": "Dune",
@@ -83,24 +113,59 @@ POPULAR_MOVIES = [
 
 LATEST_MOVIES = [
     {
-        "name": "Aquaman and the Lost Kingdom",
-        "rating": "5.7/10",
-        "description": "Black Manta seeks revenge on Aquaman for his father's death. Wielding the Black Trident's power, he becomes a formidable foe. To defend Atlantis, Aquaman forges an alliance with his imprisoned brother."
+        "name": "Deadpool & Wolverine",
+        "rating": "8.0/10",
+        "description": "Wade Wilson teams up with Wolverine in multiverse adventure."
+    },
+    {
+        "name": "Inside Out 2",
+        "rating": "7.7/10",
+        "description": "Riley's emotions navigate teenage challenges and new feelings."
+    },
+    {
+        "name": "Bad Boys: Ride or Die",
+        "rating": "6.8/10",
+        "description": "Miami cops Marcus and Mike face their biggest threat yet."
+    },
+    {
+        "name": "Dune: Part Two",
+        "rating": "8.5/10",
+        "description": "Paul Atreides leads rebellion against those who destroyed his family."
     },
     {
         "name": "Wonka",
-        "rating": "7.1/10", 
-        "description": "The story will focus specifically on a young Willy Wonka and how he met the Oompa-Loompas on one of his earliest adventures."
+        "rating": "7.1/10",
+        "description": "Young Willy Wonka's early chocolate-making adventures."
     },
     {
-        "name": "The Hunger Games: The Ballad of Songbirds & Snakes",
+        "name": "Scream VI",
+        "rating": "6.5/10",
+        "description": "Ghostface stalks survivors in New York City."
+    },
+    {
+        "name": "John Wick: Chapter 4",
+        "rating": "7.8/10",
+        "description": "John Wick fights for freedom from High Table."
+    },
+    {
+        "name": "Guardians of the Galaxy Vol. 3",
+        "rating": "7.9/10",
+        "description": "Peter Quill's team defends universe and protects their own."
+    },
+    {
+        "name": "Fast X",
+        "rating": "5.8/10",
+        "description": "Dom's family faces their most lethal opponent ever."
+    },
+    {
+        "name": "Indiana Jones 5",
         "rating": "6.7/10",
-        "description": "64 years before he becomes the tyrannical president of Panem, Coriolanus Snow sees a chance for a change in fortunes when he mentors Lucy Gray Baird, the female tribute from District 12."
+        "description": "Aging archaeologist faces final adventure."
     },
     {
         "name": "Napoleon",
         "rating": "6.4/10",
-        "description": "An epic that details the checkered rise and fall of French Emperor Napoleon Bonaparte and his relentless journey to power through the prism of his addictive, volatile relationship with his wife, Josephine."
+        "description": "Epic about French Emperor's rise and fall through relationship."
     },
     {
         "name": "Indiana Jones and the Dial of Destiny",
@@ -128,51 +193,51 @@ RANDOM_MOVIES = [
     {
         "name": "The Shawshank Redemption",
         "rating": "9.3/10",
-        "description": "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency."
+        "description": "Two imprisoned men bond over years, finding solace and redemption."
     },
     {
-        "name": "The Godfather",
-        "rating": "9.2/10", 
-        "description": "The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son."
-    },
-    {
-        "name": "Pulp Fiction",
-        "rating": "8.9/10",
-        "description": "The lives of two mob hitmen, a boxer, a gangster and his wife intertwine in four tales of violence and redemption."
-    },
-    {
-        "name": "Inception",
-        "rating": "8.8/10",
-        "description": "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O."
-    },
-    {
-        "name": "Forrest Gump",
-        "rating": "8.8/10",
-        "description": "The presidencies of Kennedy and Johnson, the events of Vietnam, Watergate and other historical events unfold from the perspective of an Alabama man with an IQ of 75."
-    },
-    {
-        "name": "The Matrix",
-        "rating": "8.7/10",
-        "description": "When a beautiful stranger leads computer hacker Neo to a forbidding underworld, he discovers the shocking truth--the life he knows is the elaborate deception of an evil cyber-intelligence."
-    },
-    {
-        "name": "Goodfellas",
-        "rating": "8.7/10",
-        "description": "The story of Henry Hill and his life in the mob, covering his relationship with his wife Karen Hill and his mob partners Jimmy Conway and Tommy DeVito."
-    },
-    {
-        "name": "Interstellar",
-        "rating": "8.6/10",
-        "description": "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival."
-    },
-    {
-        "name": "Parasite",
+        "name": "Casablanca",
         "rating": "8.5/10",
-        "description": "A poor family schemes to become employed by a wealthy family and infiltrate their household by posing as unrelated, highly qualified individuals."
+        "description": "Nightclub owner helps ex-lover and husband escape Nazis."
     },
     {
-        "name": "The Avengers",
+        "name": "Toy Story",
+        "rating": "8.3/10",
+        "description": "Toys come to life when humans aren't around."
+    },
+    {
+        "name": "Titanic",
+        "rating": "7.9/10",
+        "description": "Romance blooms aboard the doomed ocean liner."
+    },
+    {
+        "name": "The Lion King",
+        "rating": "8.5/10",
+        "description": "Young lion prince flees his kingdom after father's death."
+    },
+    {
+        "name": "Jurassic Park",
+        "rating": "8.1/10",
+        "description": "Dinosaurs are brought back to life in modern theme park."
+    },
+    {
+        "name": "Star Wars",
+        "rating": "8.6/10",
+        "description": "Young farm boy joins rebellion against evil Empire."
+    },
+    {
+        "name": "E.T.",
+        "rating": "7.9/10",
+        "description": "Boy befriends stranded alien trying to return home."
+    },
+    {
+        "name": "Back to the Future",
+        "rating": "8.5/10",
+        "description": "Teen travels back in time and changes his parents' past."
+    },
+    {
+        "name": "The Terminator",
         "rating": "8.0/10",
-        "description": "Earth's mightiest heroes must come together and learn to fight as a team if they are going to stop the mischievous Loki and his alien army from enslaving humanity."
+        "description": "Robot assassin sent back to kill future resistance leader."
     }
 ]

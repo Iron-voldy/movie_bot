@@ -14,6 +14,9 @@ API_ID = int(environ.get('API_ID', '3135143'))
 API_HASH = environ.get('API_HASH', '24f97a7491f6fc888eeff31694c061bf')
 BOT_TOKEN = environ.get('BOT_TOKEN')
 
+# Gemini API for real-time movie data
+GEMINI_API_KEY = environ.get('GEMINI_API_KEY')
+
 # Validate bot token
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN environment variable is required!")

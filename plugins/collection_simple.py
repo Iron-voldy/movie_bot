@@ -3,7 +3,7 @@ Simple collection handler for debugging
 """
 
 import logging
-from hydrogram import Client, filters
+from hydrogram import Client, filters, enums
 from hydrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ async def test_collection(client: Client, query: CallbackQuery):
         await query.message.edit_text(
             text,
             reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode="markdown"
+            parse_mode=enums.ParseMode.MARKDOWN
         )
         
         logger.info("Test collection completed successfully")

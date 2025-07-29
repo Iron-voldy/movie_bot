@@ -8,6 +8,7 @@ import logging
 from hydrogram import Client, filters, enums
 from hydrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from movie_data import POPULAR_MOVIES, LATEST_MOVIES, RANDOM_MOVIES
+from movie_fetcher import movie_fetcher
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,19 @@ async def show_popular_movies(client: Client, query: CallbackQuery):
         logger.info(f"Popular movies callback triggered: {query.data}")
         page = int(query.data.split("#")[1])
         logger.info(f"Page number: {page}")
-        await show_movie_list(query, POPULAR_MOVIES, "🔥 Popular Movies", "popular_movies", page)
+        
+        # Show loading message
+        await query.answer("🔄 Fetching latest popular movies...")
+        
+        # Get real-time data from Gemini API
+        try:
+            movies = await movie_fetcher.get_popular_movies()
+            logger.info(f"Got {len(movies)} movies from API")
+        except Exception as api_error:
+            logger.error(f"API failed, using fallback: {api_error}")
+            movies = POPULAR_MOVIES  # Fallback to static data
+        
+        await show_movie_list(query, movies, "🔥 Popular Movies (Live Data)", "popular_movies", page)
     except Exception as e:
         logger.error(f"Error showing popular movies: {e}")
         import traceback
@@ -65,7 +78,19 @@ async def show_latest_movies(client: Client, query: CallbackQuery):
     """Show latest movies with pagination"""
     try:
         page = int(query.data.split("#")[1])
-        await show_movie_list(query, LATEST_MOVIES, "🆕 Latest Added Movies", "latest_movies", page)
+        
+        # Show loading message
+        await query.answer("🔄 Fetching latest releases...")
+        
+        # Get real-time data from Gemini API
+        try:
+            movies = await movie_fetcher.get_latest_movies()
+            logger.info(f"Got {len(movies)} latest movies from API")
+        except Exception as api_error:
+            logger.error(f"API failed, using fallback: {api_error}")
+            movies = LATEST_MOVIES  # Fallback to static data
+        
+        await show_movie_list(query, movies, "🆕 Latest Movies (Live Data)", "latest_movies", page)
     except Exception as e:
         logger.error(f"Error showing latest movies: {e}")
         await query.answer("❌ An error occurred. Please try again.")
@@ -75,10 +100,22 @@ async def show_random_movies(client: Client, query: CallbackQuery):
     """Show random movies with pagination"""
     try:
         page = int(query.data.split("#")[1])
-        # Shuffle the movies for true randomness
-        shuffled_movies = RANDOM_MOVIES.copy()
-        random.shuffle(shuffled_movies)
-        await show_movie_list(query, shuffled_movies, "🎲 Random Movies", "random_movies", page)
+        
+        # Show loading message
+        await query.answer("🔄 Getting random movie selection...")
+        
+        # Get real-time data from Gemini API
+        try:
+            movies = await movie_fetcher.get_random_movies()
+            # Shuffle for extra randomness
+            random.shuffle(movies)
+            logger.info(f"Got {len(movies)} random movies from API")
+        except Exception as api_error:
+            logger.error(f"API failed, using fallback: {api_error}")
+            movies = RANDOM_MOVIES.copy()
+            random.shuffle(movies)
+        
+        await show_movie_list(query, movies, "🎲 Random Movies (Live Data)", "random_movies", page)
     except Exception as e:
         logger.error(f"Error showing random movies: {e}")
         await query.answer("❌ An error occurred. Please try again.")
@@ -95,21 +132,32 @@ async def show_movie_list(query: CallbackQuery, movies: list, title: str, callba
             await query.answer("No more movies available.", show_alert=True)
             return
         
-        # Build movie list text
+        # Build movie list text with strict length control
         text = f"{title}\n\n"
+        max_message_length = 4000  # Telegram's limit is 4096, leave some buffer
         
         for i, movie in enumerate(page_movies, 1):
             movie_num = start_idx + i
-            text += f"**{movie_num}. {movie['name']}**\n"
-            text += f"⭐ **Rating:** {movie['rating']}\n"
             
-            # Truncate description if too long
+            # Create the movie entry
+            movie_entry = f"**{movie_num}. {movie['name']}**\n"
+            movie_entry += f"⭐ **Rating:** {movie['rating']}\n"
+            
+            # Truncate description more aggressively if needed
             description = movie['description']
-            if len(description) > 150:
-                description = description[:150] + "..."
+            max_desc_length = min(60, 80)  # Reduced from 80
+            if len(description) > max_desc_length:
+                description = description[:max_desc_length] + "..."
             
-            text += f"📝 **Description:** {description}\n\n"
-            text += "─" * 30 + "\n\n"
+            movie_entry += f"📝 **Description:** {description}\n\n"
+            movie_entry += "─" * 20 + "\n\n"  # Reduced separator length
+            
+            # Check if adding this entry would exceed the limit
+            if len(text + movie_entry) > max_message_length:
+                logger.warning(f"Message would be too long, truncating at movie {movie_num-1}")
+                break
+            
+            text += movie_entry
         
         # Navigation buttons
         buttons = []

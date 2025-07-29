@@ -19,62 +19,92 @@ async def check_user_subscriptions(client: Client, user_id: int, selected_langua
     Check if user is subscribed to required channels
     Returns (is_subscribed, missing_channels, language_needed)
     """
+    from language_config import get_required_channels
+    
     missing_channels = []
+    required_channels = get_required_channels()
     
-    # Check common channel subscription
-    common_subscribed = await is_subscribed(client, user_id, int(COMMON_CHANNEL))
-    logger.info(f"User {user_id} common channel subscription: {common_subscribed}")
-    if not common_subscribed:
-        missing_channels.append(int(COMMON_CHANNEL))
+    logger.info(f"Checking channels for user {user_id}: {required_channels}")
     
-    # If user has selected a language, check language-specific channel
-    if selected_language:
-        lang_channel = get_language_channel(selected_language)
-        lang_subscribed = await is_subscribed(client, user_id, int(lang_channel))
-        logger.info(f"User {user_id} {selected_language} channel ({lang_channel}) subscription: {lang_subscribed}")
-        
-        if not lang_subscribed:
-            missing_channels.append(int(lang_channel))
+    # Check all required channels
+    for channel_id in required_channels:
+        try:
+            # First check if bot can access the channel
+            try:
+                await client.get_chat(int(channel_id))
+                logger.info(f"✅ Bot can access channel {channel_id}")
+            except Exception as e:
+                logger.error(f"❌ Bot cannot access channel {channel_id}: {e}")
+                # If bot cannot access channel, add it to missing list
+                missing_channels.append(int(channel_id))
+                continue
+            
+            # Check user subscription
+            subscribed = await is_subscribed(client, user_id, int(channel_id))
+            logger.info(f"User {user_id} channel {channel_id} subscription: {subscribed}")
+            
+            if not subscribed:
+                missing_channels.append(int(channel_id))
+                
+        except Exception as e:
+            logger.error(f"Error checking channel {channel_id}: {e}")
+            missing_channels.append(int(channel_id))
     
-    logger.info(f"User {user_id} missing channels: {missing_channels}")
+    logger.info(f"Final result for user {user_id}: subscribed={len(missing_channels) == 0}, missing={missing_channels}")
     return len(missing_channels) == 0, missing_channels, selected_language is None
 
 async def create_subscription_buttons(client: Client, user_id: int, selected_language: str = None, callback_data: str = None) -> InlineKeyboardMarkup:
     """Create buttons for channel subscription with auto-join capability"""
+    from language_config import get_required_channels, get_channel_info
+    
     buttons = []
+    required_channels = get_required_channels()
     
     # Check which channels user needs to join
-    missing_channels = []
-    
-    # Check common channel
-    if not await is_subscribed(client, user_id, int(COMMON_CHANNEL)):
-        missing_channels.append(('common', int(COMMON_CHANNEL)))
-    
-    # Check language-specific channel
-    if selected_language:
-        lang_channel = get_language_channel(selected_language)
-        if not await is_subscribed(client, user_id, int(lang_channel)):
-            missing_channels.append(('language', int(lang_channel)))
-    
-    logger.info(f"Creating buttons for missing channels: {missing_channels}")
-    
-    # Create buttons for direct auto-join
-    for channel_type, channel_id in missing_channels:
+    for channel_id in required_channels:
         try:
-            chat = await client.get_chat(channel_id)
+            # Check if user is subscribed
+            if await is_subscribed(client, user_id, int(channel_id)):
+                continue  # User already subscribed, skip this channel
             
-            if channel_type == 'common':
-                button_text = f"✇ Join Common Channel ({chat.title}) ✇"
-                callback_data_btn = f"auto_join_common_{channel_id}"
-            else:
-                button_text = f"✇ Join {get_language_display_name(selected_language)} Channel ({chat.title}) ✇"
-                callback_data_btn = f"auto_join_language_{channel_id}_{selected_language}"
-            
-            buttons.append([
-                InlineKeyboardButton(button_text, callback_data=callback_data_btn)
-            ])
+            # Try to get channel info
+            try:
+                chat = await client.get_chat(int(channel_id))
+                logger.info(f"✅ Got chat info for {channel_id}: {chat.title}")
+                
+                # Try to create invite link
+                try:
+                    invite = await client.create_chat_invite_link(int(channel_id), creates_join_request=False)
+                    logger.info(f"✅ Created invite link for {channel_id}")
+                    
+                    button_text = f"✇ Join {chat.title} ✇"
+                    buttons.append([
+                        InlineKeyboardButton(button_text, url=invite.invite_link)
+                    ])
+                    logger.info(f"✅ Created join button for {channel_id} with URL")
+                    
+                except Exception as invite_error:
+                    logger.error(f"❌ Cannot create invite for {channel_id}: {invite_error}")
+                    # Fallback to callback button for auto-join attempt
+                    button_text = f"✇ Join {chat.title} ✇"
+                    buttons.append([
+                        InlineKeyboardButton(button_text, callback_data=f"auto_join_{channel_id}")
+                    ])
+                    
+            except Exception as chat_error:
+                logger.error(f"❌ Bot cannot access channel {channel_id}: {chat_error}")
+                # Create fallback button
+                channel_info = get_channel_info(channel_id)
+                channel_name = channel_info['name'] if channel_info else f"Channel {channel_id}"
+                
+                button_text = f"✇ Join {channel_name} ✇"
+                buttons.append([
+                    InlineKeyboardButton(button_text, callback_data=f"fallback_join_{channel_id}")
+                ])
+                logger.warning(f"⚠️ Created fallback button for inaccessible channel {channel_id}")
+                
         except Exception as e:
-            logger.error(f"Error creating {channel_type} channel button: {e}")
+            logger.error(f"Error processing channel {channel_id}: {e}")
     
     # Add try again button
     if callback_data:
@@ -168,9 +198,7 @@ async def handle_subscription_check(client: Client, query: CallbackQuery):
         await asyncio.sleep(2)
         
         # Check if user is subscribed to required channels
-        logger.info(f"Checking channels for user {user_id}: {[COMMON_CHANNEL, get_language_channel(language)]}")
         is_subscribed, missing_channels, _ = await check_user_subscriptions(client, user_id, language)
-        logger.info(f"Final result for user {user_id}: subscribed={is_subscribed}, missing={missing_channels}")
         
         if is_subscribed:
             await query.message.edit_text(
@@ -187,13 +215,16 @@ async def handle_subscription_check(client: Client, query: CallbackQuery):
                 client, user_id, language, f"check_subscription_{language}"
             )
             
+            from language_config import get_channel_info
             missing_channel_names = []
             for channel_id in missing_channels:
                 try:
                     chat = await client.get_chat(channel_id)
                     missing_channel_names.append(chat.title)
                 except:
-                    missing_channel_names.append(str(channel_id))
+                    channel_info = get_channel_info(str(channel_id))
+                    channel_name = channel_info['name'] if channel_info else f"Channel {channel_id}"
+                    missing_channel_names.append(channel_name)
             
             await query.message.edit_text(
                 f"🎯 **Language**: {get_language_display_name(language)}\n\n"
@@ -204,6 +235,73 @@ async def handle_subscription_check(client: Client, query: CallbackQuery):
             )
     except Exception as e:
         logger.error(f"Error checking subscription: {e}")
+        await query.answer("❌ An error occurred. Please try again.")
+
+@Client.on_callback_query(filters.regex(r"^fallback_join_"))
+async def handle_fallback_join(client: Client, query: CallbackQuery):
+    """Handle fallback join for inaccessible channels"""
+    try:
+        channel_id = query.data.split("_", 2)[2]
+        user_id = query.from_user.id
+        
+        from language_config import get_channel_info
+        channel_info = get_channel_info(channel_id)
+        channel_name = channel_info['name'] if channel_info else f"Channel {channel_id}"
+        
+        await query.answer(
+            f"❌ Cannot access {channel_name}. Please contact admin to add the bot to this channel.",
+            show_alert=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in fallback join handler: {e}")
+        await query.answer("❌ An error occurred. Please contact admin.")
+
+@Client.on_callback_query(filters.regex(r"^auto_join_-?\d+$"))
+async def handle_generic_auto_join(client: Client, query: CallbackQuery):
+    """Handle generic auto-join for channels"""
+    try:
+        channel_id = int(query.data.split("_", 2)[2])
+        user_id = query.from_user.id
+        
+        # Try to add user to channel
+        try:
+            await client.add_chat_members(channel_id, user_id)
+            await query.answer("✅ Successfully joined the channel!")
+            
+            # Re-check subscriptions
+            from database.users_chats_db import db
+            user_language = await db.get_user_language(user_id) or 'english'
+            is_subscribed, missing_channels, _ = await check_user_subscriptions(client, user_id, user_language)
+            
+            if is_subscribed:
+                await query.message.edit_text(
+                    f"🎉 **All set!** You are now subscribed to all required channels.\n"
+                    f"✅ **Language**: {get_language_display_name(user_language)}\n\n"
+                    "You can now use the bot to search for movies and subtitles!",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🎬 Search Movies", switch_inline_query_current_chat="")
+                    ]])
+                )
+            else:
+                # Still need to join other channels
+                subscription_buttons = await create_subscription_buttons(
+                    client, user_id, user_language, f"check_subscription_{user_language}"
+                )
+                await query.message.edit_text(
+                    f"✅ **Channel joined!**\n\n"
+                    f"🎯 **Language**: {get_language_display_name(user_language)}\n\n"
+                    "📋 **Still need to join remaining channels**\n\n"
+                    "Please join the remaining channels to continue:",
+                    reply_markup=subscription_buttons
+                )
+                
+        except Exception as e:
+            logger.error(f"Error adding user to channel {channel_id}: {e}")
+            await query.answer("❌ Unable to join channel automatically. Please use the invite link or contact admin.", show_alert=True)
+                
+    except Exception as e:
+        logger.error(f"Error in generic auto-join handler: {e}")
         await query.answer("❌ An error occurred. Please try again.")
 
 @Client.on_callback_query(filters.regex(r"^show_language_selection$"))

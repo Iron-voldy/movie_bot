@@ -534,14 +534,29 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 logger.info(f"Document ID: {file_info['_id']}")
                 logger.info(f"Caption: {f_caption[:100]}...")
                 
-                await client.send_document(
-                    chat_id=query.from_user.id,
-                    document=file_info['_id'],
-                    caption=f_caption,
-                    reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
-                    ]])
-                )
+                # Try to send the cached document
+                try:
+                    await client.send_document(
+                        chat_id=query.from_user.id,
+                        document=file_info['_id'],
+                        caption=f_caption,
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                        ]])
+                    )
+                except Exception as doc_error:
+                    logger.error(f"send_document failed: {doc_error}")
+                    # Final fallback - send file info as message with inline search
+                    await client.send_message(
+                        chat_id=query.from_user.id,
+                        text=f"🎬 **{file_info['file_name']}**\n\n"
+                             f"📁 Size: {get_size(file_info['file_size'])}\n"
+                             f"🆔 File ID: `{file_info['_id']}`\n\n"
+                             f"❌ Unable to send file directly. Please use inline search to get this movie.",
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton("🔍 Search Inline", switch_inline_query_current_chat=file_info['file_name'][:30])
+                        ]])
+                    )
                 
                 logger.info("Movie file sent successfully, now sending subtitle")
                 
@@ -648,14 +663,29 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 else:
                     f_caption = f"{file_info['file_name']}"
                 
-                await client.send_document(
-                    chat_id=query.from_user.id,
-                    document=file_info['_id'],
-                    caption=f_caption,
-                    reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
-                    ]])
-                )
+                # Try to send the cached document
+                try:
+                    await client.send_document(
+                        chat_id=query.from_user.id,
+                        document=file_info['_id'],
+                        caption=f_caption,
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                        ]])
+                    )
+                except Exception as doc_error:
+                    logger.error(f"send_document failed: {doc_error}")
+                    # Final fallback - send file info as message with inline search
+                    await client.send_message(
+                        chat_id=query.from_user.id,
+                        text=f"🎬 **{file_info['file_name']}**\n\n"
+                             f"📁 Size: {get_size(file_info['file_size'])}\n"
+                             f"🆔 File ID: `{file_info['_id']}`\n\n"
+                             f"❌ Unable to send file directly. Please use inline search to get this movie.",
+                        reply_markup=InlineKeyboardMarkup([[
+                            InlineKeyboardButton("🔍 Search Inline", switch_inline_query_current_chat=file_info['file_name'][:30])
+                        ]])
+                    )
                 
                 # Update final message
                 await query.message.edit_text(

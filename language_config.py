@@ -2,22 +2,23 @@
 Simplified configuration - Only 2 required channels for joining, all languages for subtitles
 """
 
-# Required channels that all users must join before using the bot
+# Required channels that all users must join before using the bot  
+# IMPORTANT: Replace these with your actual channel IDs where the bot is admin
 REQUIRED_CHANNELS = [
     {
-        'channel': '-1002766947260',
+        'channel': '-1002766947260',  # Replace with actual channel ID
         'name': 'Movies Channel 1',
         'type': 'main'
     },
     {
-        'channel': '-1002886647880', 
-        'name': 'Movies Channel 2',
+        'channel': '-1002886647880',  # Replace with actual channel ID
+        'name': 'Movies Channel 2', 
         'type': 'main'
     }
 ]
 
 # Legacy compatibility - keeping old structure but simplified
-COMMON_CHANNEL = '-1002766947260'  # First required channel
+COMMON_CHANNEL = 'YOUR_CHANNEL_ID_1'  # First required channel - REPLACE THIS
 
 # All available languages for subtitle selection (not for channels)
 SUBTITLE_LANGUAGES = {

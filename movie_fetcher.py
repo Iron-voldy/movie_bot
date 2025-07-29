@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class MovieFetcher:
     def __init__(self):
         self.api_key = os.environ.get('GEMINI_API_KEY')
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         self.cache = {}
         self.cache_duration = timedelta(hours=6)  # Cache for 6 hours
         

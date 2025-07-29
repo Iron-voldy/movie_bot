@@ -196,12 +196,20 @@ async def show_movie_list(query: CallbackQuery, movies: list, title: str, callba
             InlineKeyboardButton("🔍 Search All Movies", switch_inline_query_current_chat="")
         ])
         
-        await query.message.edit_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode=enums.ParseMode.MARKDOWN,
-            disable_web_page_preview=True
-        )
+        # Check if message content would be the same to avoid MESSAGE_NOT_MODIFIED error
+        try:
+            await query.message.edit_text(
+                text,
+                reply_markup=InlineKeyboardMarkup(buttons),
+                parse_mode=enums.ParseMode.MARKDOWN,
+                disable_web_page_preview=True
+            )
+        except Exception as edit_error:
+            if "MESSAGE_NOT_MODIFIED" in str(edit_error):
+                logger.warning("Message content unchanged, skipping edit")
+                await query.answer("Content is already up to date!")
+            else:
+                raise edit_error
         
     except Exception as e:
         logger.error(f"Error in show_movie_list: {e}")

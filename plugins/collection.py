@@ -22,10 +22,9 @@ async def show_collection_menu(client: Client, query: CallbackQuery):
         buttons = [
             [
                 InlineKeyboardButton("🔥 Popular Movies", callback_data="popular_movies#0"),
-                InlineKeyboardButton("🧪 Test Collection", callback_data="test_collection")
+                InlineKeyboardButton("🆕 Latest Added", callback_data="latest_movies#0")
             ],
             [
-                InlineKeyboardButton("🆕 Latest Added", callback_data="latest_movies#0"),
                 InlineKeyboardButton("🎲 Random Movies", callback_data="random_movies#0")
             ],
             [
@@ -55,8 +54,12 @@ async def show_popular_movies(client: Client, query: CallbackQuery):
         page = int(query.data.split("#")[1])
         logger.info(f"Page number: {page}")
         
-        # Show loading message
-        await query.answer("🔄 Fetching latest popular movies...")
+        # Show loading message in the chat
+        await query.message.edit_text(
+            "🔄 **Loading Popular Movies...**\n\n"
+            "Please wait while we fetch the latest popular movies from our database.",
+            reply_markup=None
+        )
         
         # Get real-time data from Gemini API
         try:
@@ -82,8 +85,12 @@ async def show_latest_movies(client: Client, query: CallbackQuery):
     try:
         page = int(query.data.split("#")[1])
         
-        # Show loading message
-        await query.answer("🔄 Fetching latest releases...")
+        # Show loading message in the chat
+        await query.message.edit_text(
+            "🔄 **Loading Latest Movies...**\n\n"
+            "Please wait while we fetch the latest movie releases.",
+            reply_markup=None
+        )
         
         # Get real-time data from Gemini API
         try:
@@ -107,8 +114,12 @@ async def show_random_movies(client: Client, query: CallbackQuery):
     try:
         page = int(query.data.split("#")[1])
         
-        # Show loading message
-        await query.answer("🔄 Getting random movie selection...")
+        # Show loading message in the chat
+        await query.message.edit_text(
+            "🔄 **Loading Random Movies...**\n\n"
+            "Please wait while we prepare a random selection of movies for you.",
+            reply_markup=None
+        )
         
         # Get real-time data from Gemini API
         try:

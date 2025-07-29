@@ -5,7 +5,7 @@ Handles popular movies, latest movies, and random movies
 
 import random
 import logging
-from hydrogram import Client, filters
+from hydrogram import Client, filters, enums
 from hydrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from movie_data import POPULAR_MOVIES, LATEST_MOVIES, RANDOM_MOVIES
 
@@ -151,7 +151,7 @@ async def show_movie_list(query: CallbackQuery, movies: list, title: str, callba
         await query.message.edit_text(
             text,
             reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode="markdown",
+            parse_mode=enums.ParseMode.MARKDOWN,
             disable_web_page_preview=True
         )
         
@@ -192,7 +192,7 @@ async def back_to_main_menu(client: Client, query: CallbackQuery):
             "🗣️ Get subtitles in multiple languages\n\n"
             "Choose an option below:",
             reply_markup=InlineKeyboardMarkup(buttons),
-            parse_mode="markdown"
+            parse_mode=enums.ParseMode.MARKDOWN
         )
         
     except Exception as e:

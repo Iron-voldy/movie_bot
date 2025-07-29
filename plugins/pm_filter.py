@@ -23,13 +23,19 @@ logger.setLevel(logging.INFO)
 async def send_subtitle_file(bot, user_id, movie_name, language, display_name, flag):
     """Generate and send subtitle file for the selected language"""
     try:
+        logger.info(f"send_subtitle_file: Starting for {movie_name} in {language}")
         # Get subtitles from the subtitle handler
+        logger.info("Searching for subtitles...")
         subtitles = await subtitle_handler.search_subtitles(movie_name, language)
+        logger.info(f"Found {len(subtitles) if subtitles else 0} subtitles")
         
         if subtitles:
             # Use the first available subtitle
             subtitle_info = subtitles[0]
+            logger.info(f"Using subtitle: {subtitle_info}")
+            logger.info("Downloading subtitle content...")
             subtitle_content = await subtitle_handler.download_subtitle(subtitle_info)
+            logger.info(f"Downloaded subtitle content: {len(subtitle_content) if subtitle_content else 0} bytes")
             
             if subtitle_content:
                 # Create filename for the subtitle
@@ -37,6 +43,7 @@ async def send_subtitle_file(bot, user_id, movie_name, language, display_name, f
                 subtitle_filename = f"{clean_movie_name}_{language}.srt"
                 
                 # Send subtitle as document
+                logger.info(f"Sending subtitle file: {subtitle_filename}")
                 await bot.send_document(
                     chat_id=user_id,
                     document=subtitle_content,
@@ -499,6 +506,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             logger.info(f"File info: {file_info.get('file_name', 'Unknown')}, size: {file_info.get('file_size', 'Unknown')}")
             
             # Send the movie file
+            logger.info("About to send movie file - updating message")
             await query.message.edit_text(
                 f"📤 **Sending Movie File**\n\n"
                 f"Movie: {file_info['file_name']}\n"
@@ -507,7 +515,9 @@ async def cb_handler(client: Client, query: CallbackQuery):
             )
             
             # Send movie file to user
+            logger.info("Starting movie file send process")
             try:
+                logger.info("Preparing file caption")
                 if CUSTOM_FILE_CAPTION:
                     try:
                         f_caption = CUSTOM_FILE_CAPTION.format(
@@ -520,6 +530,10 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 else:
                     f_caption = f"{file_info['file_name']}"
                 
+                logger.info(f"Sending document to user {query.from_user.id}")
+                logger.info(f"Document ID: {file_info['_id']}")
+                logger.info(f"Caption: {f_caption[:100]}...")
+                
                 await bot.send_document(
                     chat_id=query.from_user.id,
                     document=file_info['_id'],
@@ -529,10 +543,14 @@ async def cb_handler(client: Client, query: CallbackQuery):
                     ]])
                 )
                 
+                logger.info("Movie file sent successfully, now sending subtitle")
+                
                 # Generate and send subtitle file
+                logger.info("About to send subtitle file")
                 await send_subtitle_file(bot, query.from_user.id, file_info['file_name'], language, display_name, flag)
                 
                 # Update final message
+                logger.info("Updating final success message")
                 await query.message.edit_text(
                     f"✅ **Files Sent Successfully!**\n\n"
                     f"📹 Movie: {file_info['file_name']}\n"
@@ -543,6 +561,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
                         InlineKeyboardButton("🎭 Browse Collection", callback_data="collection")
                     ]])
                 )
+                
+                logger.info("All files sent successfully!")
                 
             except Exception as send_error:
                 logger.error(f"Error sending movie file: {send_error}")

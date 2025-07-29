@@ -49,7 +49,17 @@ async def check_user_channels(client: Client, user_id: int) -> tuple:
     
     for channel_id in required_channel_ids:
         try:
-            # Direct channel member check
+            # First try to get chat info to verify bot has access
+            try:
+                chat = await client.get_chat(int(channel_id))
+                logger.info(f"✅ Bot can access channel {channel_id}: {chat.title}")
+            except Exception as chat_error:
+                logger.error(f"❌ Bot cannot access channel {channel_id}: {chat_error}")
+                # If bot can't access channel, assume user is not member
+                missing_channels.append(int(channel_id))
+                continue
+            
+            # Now check if user is a member
             member = await client.get_chat_member(int(channel_id), user_id)
             logger.info(f"User {user_id} status in {channel_id}: {member.status}")
             
@@ -62,6 +72,7 @@ async def check_user_channels(client: Client, user_id: int) -> tuple:
                 
         except Exception as e:
             logger.error(f"❌ Error checking {channel_id} for user {user_id}: {e}")
+            # If we can't check, assume user is not member
             missing_channels.append(int(channel_id))
     
     is_all_subscribed = len(missing_channels) == 0
@@ -77,51 +88,61 @@ async def create_join_buttons(client: Client, missing_channels: list) -> InlineK
     channel_emojis = ["🎬", "🍿", "📺", "🎭"]
     
     for idx, channel_id in enumerate(missing_channels):
+        emoji = channel_emojis[idx] if idx < len(channel_emojis) else "📢"
+        
         try:
+            # Try to get chat info
             chat = await client.get_chat(channel_id)
-            emoji = channel_emojis[idx] if idx < len(channel_emojis) else "📢"
+            chat_title = chat.title
+            logger.info(f"✅ Got chat info for {channel_id}: {chat_title}")
             
-            # Try to create invite link first
+            # Try multiple methods to create working join links
+            join_url = None
+            
+            # Method 1: Try to create invite link
             try:
                 invite_link = await client.create_chat_invite_link(channel_id, creates_join_request=False)
-                button_text = f"{emoji} [{idx + 1}] {chat.title}"
-                buttons.append([
-                    InlineKeyboardButton(button_text, url=invite_link.invite_link)
-                ])
-                logger.info(f"✅ Created invite link for {channel_id}: {invite_link.invite_link}")
+                join_url = invite_link.invite_link
+                logger.info(f"✅ Created invite link for {channel_id}")
             except Exception as e:
-                logger.error(f"❌ Could not create invite link for {channel_id}: {e}")
-                # Fallback - try channel username
-                if hasattr(chat, 'username') and chat.username:
-                    button_text = f"{emoji} [{idx + 1}] {chat.title}"
-                    buttons.append([
-                        InlineKeyboardButton(button_text, url=f"https://t.me/{chat.username}")
-                    ])
-                    logger.info(f"✅ Using username link for {channel_id}: @{chat.username}")
-                else:
-                    # Try export chat invite link method
-                    try:
-                        invite_link = await client.export_chat_invite_link(channel_id)
-                        button_text = f"{emoji} [{idx + 1}] {chat.title}"
-                        buttons.append([
-                            InlineKeyboardButton(button_text, url=invite_link)
-                        ])
-                        logger.info(f"✅ Using exported invite link for {channel_id}")
-                    except Exception as e2:
-                        logger.error(f"❌ Failed to export invite link for {channel_id}: {e2}")
-                        # Last resort - manual join button
-                        button_text = f"{emoji} [{idx + 1}] {chat.title} (Contact Admin)"
-                        buttons.append([
-                            InlineKeyboardButton(button_text, callback_data=f"manual_join_{channel_id}")
-                        ])
+                logger.warning(f"⚠️ Could not create invite link for {channel_id}: {e}")
+            
+            # Method 2: Try username if available
+            if not join_url and hasattr(chat, 'username') and chat.username:
+                join_url = f"https://t.me/{chat.username}"
+                logger.info(f"✅ Using username link for {channel_id}: @{chat.username}")
+            
+            # Method 3: Try export invite link
+            if not join_url:
+                try:
+                    join_url = await client.export_chat_invite_link(channel_id)
+                    logger.info(f"✅ Exported invite link for {channel_id}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to export invite link for {channel_id}: {e}")
+            
+            # Create button with working URL or callback
+            if join_url:
+                button_text = f"{emoji} [{idx + 1}] {chat_title}"
+                buttons.append([
+                    InlineKeyboardButton(button_text, url=join_url)
+                ])
+                logger.info(f"✅ Created join button for {channel_id} with URL")
+            else:
+                # No working URL found - use callback for manual instructions
+                button_text = f"{emoji} [{idx + 1}] {chat_title} (Contact Admin)"
+                buttons.append([
+                    InlineKeyboardButton(button_text, callback_data=f"manual_join_{channel_id}")
+                ])
+                logger.warning(f"⚠️ Created manual join button for {channel_id}")
                         
         except Exception as e:
-            logger.error(f"❌ Error getting chat info for {channel_id}: {e}")
-            # Fallback button even if chat info fails
-            emoji = channel_emojis[idx] if idx < len(channel_emojis) else "📢"
+            logger.error(f"❌ Bot cannot access channel {channel_id}: {e}")
+            # Create fallback button for inaccessible channels
+            button_text = f"{emoji} [{idx + 1}] Join Channel (ID: {channel_id})"
             buttons.append([
-                InlineKeyboardButton(f"{emoji} [{idx + 1}] Join Channel", callback_data=f"manual_join_{channel_id}")
+                InlineKeyboardButton(button_text, callback_data=f"manual_join_{channel_id}")
             ])
+            logger.warning(f"⚠️ Created fallback button for inaccessible channel {channel_id}")
     
     # Add some spacing and check again button with attractive styling
     buttons.append([])  # Empty row for spacing
@@ -227,7 +248,7 @@ async def check_channels_again(client: Client, query: CallbackQuery):
 
 @Client.on_callback_query(filters.regex(r"^manual_join_"))
 async def manual_join_info(client: Client, query: CallbackQuery):
-    """Show manual join instructions"""
+    """Show manual join instructions with better guidance"""
     try:
         channel_id = int(query.data.split("_")[2])
         
@@ -239,29 +260,32 @@ async def manual_join_info(client: Client, query: CallbackQuery):
             # Check if channel has username for direct link
             if hasattr(chat, 'username') and chat.username:
                 instructions = (
-                    f"**Manual Join Required**\n\n"
-                    f"📢 **Channel:** {channel_name}\n"
-                    f"🔗 **Link:** @{chat.username}\n\n"
-                    f"Please visit https://t.me/{chat.username} to join manually, "
-                    f"then click 'Check Again' button."
+                    f"🔗 **Join {channel_name}**\n\n"
+                    f"📱 **Method 1:** Search @{chat.username} in Telegram\n"
+                    f"🌐 **Method 2:** Visit https://t.me/{chat.username}\n\n"
+                    f"After joining, return here and click '🔄 Check Again' to continue."
                 )
             else:
                 instructions = (
-                    f"**Manual Join Required**\n\n"
-                    f"📢 **Channel:** {channel_name}\n\n"
-                    f"This channel requires manual joining. Please contact the "
-                    f"admin for the channel link, then click 'Check Again' button."
+                    f"📢 **Join {channel_name}**\n\n"
+                    f"🤖 **Bot cannot create automatic link**\n\n"
+                    f"Please contact the admin to get the channel invite link, "
+                    f"then return here and click '🔄 Check Again'."
                 )
         except:
             instructions = (
-                f"**Manual Join Required**\n\n"
-                f"📢 **Channel ID:** {channel_id}\n\n"
-                f"Please contact the admin for the channel link, "
-                f"then click 'Check Again' button."
+                f"📢 **Channel Access Required**\n\n"
+                f"🆔 **Channel ID:** {channel_id}\n\n"
+                f"🤝 **Please contact the bot admin** to get the proper channel invite link.\n\n"
+                f"After joining, return and click '🔄 Check Again'."
             )
         
         await query.answer(instructions, show_alert=True)
         
     except Exception as e:
         logger.error(f"Error in manual join info: {e}")
-        await query.answer("❌ Please join the channel manually and click 'Check Again'.", show_alert=True)
+        await query.answer(
+            "📢 **Manual Join Required**\n\n"
+            "Please contact the admin for channel access and click '🔄 Check Again' after joining.", 
+            show_alert=True
+        )

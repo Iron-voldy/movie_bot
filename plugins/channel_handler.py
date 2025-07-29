@@ -3,6 +3,7 @@ Channel handler for managing user channel subscriptions
 Handles both common channel and language-specific channel joining
 """
 import logging
+import asyncio
 from hydrogram import Client, filters, enums
 from hydrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from hydrogram.errors import FloodWait, UserIsBlocked, PeerIdInvalid
@@ -160,11 +161,18 @@ async def handle_subscription_check(client: Client, query: CallbackQuery):
         language = query.data.split("_", 2)[2]
         user_id = query.from_user.id
         
+        # Show loading message
+        await query.answer("🔄 Checking your channel subscriptions...")
+        
+        # Add small delay to allow Telegram to sync
+        await asyncio.sleep(2)
+        
         # Check if user is subscribed to required channels
+        logger.info(f"Checking channels for user {user_id}: {[COMMON_CHANNEL, get_language_channel(language)]}")
         is_subscribed, missing_channels, _ = await check_user_subscriptions(client, user_id, language)
+        logger.info(f"Final result for user {user_id}: subscribed={is_subscribed}, missing={missing_channels}")
         
         if is_subscribed:
-            await query.answer("✅ Great! You are now subscribed to all required channels!")
             await query.message.edit_text(
                 f"✅ **Language**: {get_language_display_name(language)}\n\n"
                 "🎉 **All set!** You are now subscribed to all required channels.\n"
@@ -174,7 +182,26 @@ async def handle_subscription_check(client: Client, query: CallbackQuery):
                 ]])
             )
         else:
-            await query.answer("❌ Please join all required channels first!")
+            # Show subscription buttons again with missing channels
+            subscription_buttons = await create_subscription_buttons(
+                client, user_id, language, f"check_subscription_{language}"
+            )
+            
+            missing_channel_names = []
+            for channel_id in missing_channels:
+                try:
+                    chat = await client.get_chat(channel_id)
+                    missing_channel_names.append(chat.title)
+                except:
+                    missing_channel_names.append(str(channel_id))
+            
+            await query.message.edit_text(
+                f"🎯 **Language**: {get_language_display_name(language)}\n\n"
+                "❌ **Still need to join these channels:**\n" +
+                "\n".join([f"• {name}" for name in missing_channel_names]) +
+                "\n\nPlease join the channels below:",
+                reply_markup=subscription_buttons
+            )
     except Exception as e:
         logger.error(f"Error checking subscription: {e}")
         await query.answer("❌ An error occurred. Please try again.")

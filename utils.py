@@ -68,15 +68,28 @@ async def is_subscribed(bot, query, channel):
     
     if await db.find_join_req(user_id):
         return True
-    try:
-        user = await bot.get_chat_member(channel, user_id)
-        return True
-    except UserNotParticipant:
-        return False
-    except Exception as e:
-        # Handle invalid channel IDs or other errors
-        logger.error(f"Error checking subscription for channel {channel}: {e}")
-        return False  # Deny access if channel check fails
+    
+    # Add retry mechanism for channel membership check
+    for attempt in range(3):  # Try 3 times
+        try:
+            user = await bot.get_chat_member(channel, user_id)
+            logger.info(f"✅ User {user_id} is subscribed to channel {channel}")
+            return True
+        except UserNotParticipant:
+            logger.info(f"❌ User {user_id} not participant in channel {channel} (attempt {attempt + 1})")
+            if attempt < 2:  # If not the last attempt, wait and retry
+                await asyncio.sleep(1)  # Wait 1 second before retry
+                continue
+            return False
+        except Exception as e:
+            # Handle invalid channel IDs or other errors
+            logger.error(f"❌ Error checking subscription for channel {channel}: {e}")
+            if attempt < 2:  # If not the last attempt, wait and retry
+                await asyncio.sleep(1)
+                continue
+            return False  # Deny access if channel check fails after all retries
+    
+    return False
 
 async def get_poster(query, bulk=False, id=False, file=None):
     if not id:

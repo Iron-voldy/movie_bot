@@ -6,7 +6,8 @@
       "Bash(find:*)",
       "Bash(rm:*)",
       "Bash(pip install:*)",
-      "Bash(pip --version)"
+      "Bash(pip --version)",
+      "Bash(python:*)"
     ],
     "deny": []
   }

@@ -20,6 +20,65 @@ import logging, random, psutil
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
+async def send_subtitle_file(bot, user_id, movie_name, language, display_name, flag):
+    """Generate and send subtitle file for the selected language"""
+    try:
+        # Get subtitles from the subtitle handler
+        subtitles = await subtitle_handler.search_subtitles(movie_name, language)
+        
+        if subtitles:
+            # Use the first available subtitle
+            subtitle_info = subtitles[0]
+            subtitle_content = await subtitle_handler.download_subtitle(subtitle_info)
+            
+            if subtitle_content:
+                # Create filename for the subtitle
+                clean_movie_name = movie_name.replace('.mkv', '').replace('.mp4', '').replace('.avi', '')
+                subtitle_filename = f"{clean_movie_name}_{language}.srt"
+                
+                # Send subtitle as document
+                await bot.send_document(
+                    chat_id=user_id,
+                    document=subtitle_content,
+                    file_name=subtitle_filename,
+                    caption=f"📝 **{flag} {display_name} Subtitles**\n\n"
+                           f"Movie: {clean_movie_name}\n"
+                           f"Language: {display_name}\n"
+                           f"Format: SRT",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                    ]])
+                )
+                logger.info(f"Subtitle file sent successfully for {movie_name} in {language}")
+                return True
+        
+        # If no subtitles found, send a message
+        await bot.send_message(
+            chat_id=user_id,
+            text=f"📝 **{flag} {display_name} Subtitles**\n\n"
+                 f"❌ No subtitles available for this movie in {display_name}.\n"
+                 f"Movie: {movie_name}\n\n"
+                 f"You can still enjoy the movie or try a different language.",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+            ]])
+        )
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error sending subtitle file: {e}")
+        # Send error message
+        await bot.send_message(
+            chat_id=user_id,
+            text=f"📝 **Subtitle Error**\n\n"
+                 f"❌ Error generating {display_name} subtitles.\n"
+                 f"Please enjoy the movie without subtitles.",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+            ]])
+        )
+        return False
+
 BUTTONS = {}
 SPELL_CHECK = {}
 ORIGINAL_FILES = {}
@@ -375,24 +434,180 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.answer(url=f"https://t.me/{temp.U_NAME}?start={file_id}")
 
     elif query.data.startswith("subtitle"):
-        # Handle subtitle selection
-        ident, file_id, language = query.data.split("#")
-        
-        # Store subtitle preference temporarily
-        temp.SUBTITLE_PREFS = getattr(temp, 'SUBTITLE_PREFS', {})
-        temp.SUBTITLE_PREFS[query.from_user.id] = {
-            'file_id': file_id,
-            'language': language,
-            'channels': subtitle_handler.get_language_channels(language)
-        }
-        
-        await query.answer(f"✅ {language.title()} selected! Click to continue in DM.", url=f"https://t.me/{temp.U_NAME}?start={file_id}_sub_{language}")
+        # Handle subtitle selection - send movie and subtitle files directly
+        try:
+            ident, file_id, language = query.data.split("#")
+            
+            # Get language display info
+            from language_config import get_language_display_name, get_language_flag
+            flag = get_language_flag(language)
+            display_name = get_language_display_name(language)
+            
+            # Update message to show processing
+            await query.message.edit_text(
+                f"🔄 **Processing your request...**\n\n"
+                f"Selected: {flag} {display_name} subtitles\n"
+                f"Preparing movie file and subtitles...",
+                reply_markup=None
+            )
+            
+            # Get movie file details
+            files = await get_file_details(file_id)
+            if not files:
+                await query.message.edit_text(
+                    "❌ **Movie file not found**\n\n" 
+                    "Sorry, the requested movie file is no longer available.",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Back", callback_data="start")
+                    ]])
+                )
+                return
+            
+            file_info = files[0]
+            
+            # Send the movie file
+            await query.message.edit_text(
+                f"📤 **Sending Movie File**\n\n"
+                f"Movie: {file_info['file_name']}\n"
+                f"Subtitles: {flag} {display_name}\n"
+                f"Size: {get_size(file_info['file_size'])}"
+            )
+            
+            # Send movie file to user
+            try:
+                if CUSTOM_FILE_CAPTION:
+                    try:
+                        f_caption = CUSTOM_FILE_CAPTION.format(
+                            file_name=file_info['file_name'],
+                            file_size=get_size(file_info['file_size']),
+                            file_caption=""
+                        )
+                    except:
+                        f_caption = f"{file_info['file_name']}"
+                else:
+                    f_caption = f"{file_info['file_name']}"
+                
+                await bot.send_document(
+                    chat_id=query.from_user.id,
+                    document=file_info['_id'],
+                    caption=f_caption,
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                    ]])
+                )
+                
+                # Generate and send subtitle file
+                await send_subtitle_file(bot, query.from_user.id, file_info['file_name'], language, display_name, flag)
+                
+                # Update final message
+                await query.message.edit_text(
+                    f"✅ **Files Sent Successfully!**\n\n"
+                    f"📹 Movie: {file_info['file_name']}\n"
+                    f"📝 Subtitles: {flag} {display_name}\n\n"
+                    f"Check your messages above for the files!",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔍 Search More Movies", switch_inline_query_current_chat=""),
+                        InlineKeyboardButton("🎭 Browse Collection", callback_data="collection")
+                    ]])
+                )
+                
+            except Exception as send_error:
+                logger.error(f"Error sending movie file: {send_error}")
+                await query.message.edit_text(
+                    f"❌ **Error sending movie file**\n\n"
+                    f"There was an issue sending the movie. Please try again later.",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Back", callback_data="start")
+                    ]])
+                )
+            
+        except Exception as e:
+            logger.error(f"Error handling subtitle selection: {e}")
+            await query.answer("❌ Error processing selection. Please try again.", show_alert=True)
     
     elif query.data.startswith("no_sub"):
-        # Handle no subtitles selection
-        ident, file_id = query.data.split("#")
-        await query.answer("No subtitles selected")
-        await query.answer(url=f"https://t.me/{temp.U_NAME}?start={file_id}")
+        # Handle no subtitles selection - send movie file directly
+        try:
+            ident, file_id = query.data.split("#")
+            
+            # Update message to show processing
+            await query.message.edit_text(
+                f"🔄 **Processing your request...**\n\n"
+                f"Selected: No subtitles\n"
+                f"Preparing movie file...",
+                reply_markup=None
+            )
+            
+            # Get movie file details
+            files = await get_file_details(file_id)
+            if not files:
+                await query.message.edit_text(
+                    "❌ **Movie file not found**\n\n" 
+                    "Sorry, the requested movie file is no longer available.",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Back", callback_data="start")
+                    ]])
+                )
+                return
+            
+            file_info = files[0]
+            
+            # Send the movie file
+            await query.message.edit_text(
+                f"📤 **Sending Movie File**\n\n"
+                f"Movie: {file_info['file_name']}\n"
+                f"Size: {get_size(file_info['file_size'])}\n"
+                f"Subtitles: None"
+            )
+            
+            # Send movie file to user
+            try:
+                if CUSTOM_FILE_CAPTION:
+                    try:
+                        f_caption = CUSTOM_FILE_CAPTION.format(
+                            file_name=file_info['file_name'],
+                            file_size=get_size(file_info['file_size']),
+                            file_caption=""
+                        )
+                    except:
+                        f_caption = f"{file_info['file_name']}"
+                else:
+                    f_caption = f"{file_info['file_name']}"
+                
+                await bot.send_document(
+                    chat_id=query.from_user.id,
+                    document=file_info['_id'],
+                    caption=f_caption,
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                    ]])
+                )
+                
+                # Update final message
+                await query.message.edit_text(
+                    f"✅ **Movie Sent Successfully!**\n\n"
+                    f"📹 Movie: {file_info['file_name']}\n"
+                    f"📝 Subtitles: None\n\n"
+                    f"Check your messages above for the movie file!",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔍 Search More Movies", switch_inline_query_current_chat=""),
+                        InlineKeyboardButton("🎭 Browse Collection", callback_data="collection")
+                    ]])
+                )
+                
+            except Exception as send_error:
+                logger.error(f"Error sending movie file: {send_error}")
+                await query.message.edit_text(
+                    f"❌ **Error sending movie file**\n\n"
+                    f"There was an issue sending the movie. Please try again later.",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Back", callback_data="start")
+                    ]])
+                )
+            
+        except Exception as e:
+            logger.error(f"Error handling no subtitle selection: {e}")
+            await query.answer("❌ Error processing selection. Please try again.", show_alert=True)
 
     elif query.data == "reqinfo":
         await query.answer(text=script.REQINFO, show_alert=True)

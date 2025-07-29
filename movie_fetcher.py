@@ -17,10 +17,10 @@ class MovieFetcher:
         self.api_key = os.environ.get('GEMINI_API_KEY')
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         self.cache = {}
-        self.cache_duration = timedelta(hours=6)  # Cache for 6 hours
+        self.cache_duration = timedelta(hours=2)  # Cache for 2 hours to reduce API calls
         
-    async def _make_request(self, prompt: str) -> str:
-        """Make request to Gemini API"""
+    async def _make_request(self, prompt: str, max_retries: int = 3) -> str:
+        """Make request to Gemini API with retry logic"""
         if not self.api_key:
             logger.warning("GEMINI_API_KEY not set, using fallback data")
             raise ValueError("GEMINI_API_KEY environment variable not set")
@@ -39,15 +39,35 @@ class MovieFetcher:
         
         url = f"{self.base_url}?key={self.api_key}"
         
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    return result['candidates'][0]['content']['parts'][0]['text']
+        for attempt in range(max_retries):
+            try:
+                timeout = aiohttp.ClientTimeout(total=15)  # 15 second timeout
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.post(url, headers=headers, json=data) as response:
+                        if response.status == 200:
+                            result = await response.json()
+                            return result['candidates'][0]['content']['parts'][0]['text']
+                        elif response.status == 503:  # Service unavailable/overloaded
+                            error_text = await response.text()
+                            logger.warning(f"Gemini API overloaded (attempt {attempt + 1}/{max_retries}): {error_text}")
+                            if attempt < max_retries - 1:
+                                wait_time = (attempt + 1) * 2  # Exponential backoff: 2, 4, 6 seconds
+                                logger.info(f"Retrying in {wait_time} seconds...")
+                                await asyncio.sleep(wait_time)
+                                continue
+                            else:
+                                raise Exception(f"API overloaded after {max_retries} attempts")
+                        else:
+                            error_text = await response.text()
+                            logger.error(f"Gemini API error: {response.status} - {error_text}")
+                            raise Exception(f"API request failed: {response.status}")
+            except asyncio.TimeoutError:
+                logger.warning(f"API request timeout (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2)
+                    continue
                 else:
-                    error_text = await response.text()
-                    logger.error(f"Gemini API error: {response.status} - {error_text}")
-                    raise Exception(f"API request failed: {response.status}")
+                    raise Exception("API request timed out after retries")
 
     def _is_cache_valid(self, cache_key: str) -> bool:
         """Check if cached data is still valid"""

@@ -62,11 +62,14 @@ async def show_popular_movies(client: Client, query: CallbackQuery):
         try:
             movies = await movie_fetcher.get_popular_movies()
             logger.info(f"Got {len(movies)} movies from API")
+            title = "🔥 Popular Movies (Live Data)"
         except Exception as api_error:
             logger.error(f"API failed, using fallback: {api_error}")
             movies = POPULAR_MOVIES  # Fallback to static data
+            title = "🔥 Popular Movies (Fallback Data)"
+            await query.answer("⚠️ Using cached data due to API issues", show_alert=True)
         
-        await show_movie_list(query, movies, "🔥 Popular Movies (Live Data)", "popular_movies", page)
+        await show_movie_list(query, movies, title, "popular_movies", page)
     except Exception as e:
         logger.error(f"Error showing popular movies: {e}")
         import traceback
@@ -86,11 +89,14 @@ async def show_latest_movies(client: Client, query: CallbackQuery):
         try:
             movies = await movie_fetcher.get_latest_movies()
             logger.info(f"Got {len(movies)} latest movies from API")
+            title = "🆕 Latest Movies (Live Data)"
         except Exception as api_error:
             logger.error(f"API failed, using fallback: {api_error}")
             movies = LATEST_MOVIES  # Fallback to static data
+            title = "🆕 Latest Movies (Fallback Data)"
+            await query.answer("⚠️ Using cached data due to API issues", show_alert=True)
         
-        await show_movie_list(query, movies, "🆕 Latest Movies (Live Data)", "latest_movies", page)
+        await show_movie_list(query, movies, title, "latest_movies", page)
     except Exception as e:
         logger.error(f"Error showing latest movies: {e}")
         await query.answer("❌ An error occurred. Please try again.")
@@ -110,12 +116,15 @@ async def show_random_movies(client: Client, query: CallbackQuery):
             # Shuffle for extra randomness
             random.shuffle(movies)
             logger.info(f"Got {len(movies)} random movies from API")
+            title = "🎲 Random Movies (Live Data)"
         except Exception as api_error:
             logger.error(f"API failed, using fallback: {api_error}")
             movies = RANDOM_MOVIES.copy()
             random.shuffle(movies)
+            title = "🎲 Random Movies (Fallback Data)"
+            await query.answer("⚠️ Using cached data due to API issues", show_alert=True)
         
-        await show_movie_list(query, movies, "🎲 Random Movies (Live Data)", "random_movies", page)
+        await show_movie_list(query, movies, title, "random_movies", page)
     except Exception as e:
         logger.error(f"Error showing random movies: {e}")
         await query.answer("❌ An error occurred. Please try again.")

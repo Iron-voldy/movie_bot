@@ -3,18 +3,19 @@ Simplified configuration - Only 2 required channels for joining, all languages f
 """
 
 # Required channels that all users must join before using the bot  
-# IMPORTANT: Replace these with your actual channel IDs where the bot is admin
+# TEMPORARY: Empty list to disable channel checking for testing
 REQUIRED_CHANNELS = [
-    {
-        'channel': '-1002766947260',  # Replace with actual channel ID
-        'name': 'Movies Channel 1',
-        'type': 'main'
-    },
-    {
-        'channel': '-1002886647880',  # Replace with actual channel ID
-        'name': 'Movies Channel 2', 
-        'type': 'main'
-    }
+    # Uncomment and replace with your actual channel IDs when ready:
+    # {
+    #     'channel': 'YOUR_CHANNEL_ID_1',
+    #     'name': 'Movies Channel 1',
+    #     'type': 'main'
+    # },
+    # {
+    #     'channel': 'YOUR_CHANNEL_ID_2',
+    #     'name': 'Movies Channel 2', 
+    #     'type': 'main'
+    # }
 ]
 
 # Legacy compatibility - keeping old structure but simplified

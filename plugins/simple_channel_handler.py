@@ -45,6 +45,11 @@ async def check_user_channels(client: Client, user_id: int) -> tuple:
     missing_channels = []
     required_channel_ids = get_required_channels()
     
+    # If no channels configured, allow all users
+    if not required_channel_ids:
+        logger.info(f"No channels configured - allowing user {user_id}")
+        return True, []
+    
     logger.info(f"Checking channels for user {user_id}: {required_channel_ids}")
     
     for channel_id in required_channel_ids:

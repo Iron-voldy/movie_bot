@@ -465,7 +465,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
             # Get movie file details
             logger.info(f"Getting file details for file_id: {file_id}")
             files = await get_file_details(file_id)
-            logger.info(f"Retrieved files: {len(files) if files else 0}")
+            logger.info(f"Retrieved files type: {type(files)}")
+            logger.info(f"Retrieved files content: {files}")
             
             if not files:
                 logger.error(f"No files found for file_id: {file_id}")
@@ -478,8 +479,24 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 )
                 return
             
-            file_info = files[0]
-            logger.info(f"File info: {file_info['file_name']}, size: {file_info['file_size']}")
+            # Handle different return types from get_file_details
+            if isinstance(files, list) and len(files) > 0:
+                file_info = files[0]
+            elif isinstance(files, dict):
+                # If it's a dict, it might be the file info itself
+                file_info = files
+            else:
+                logger.error(f"Unexpected files format: {type(files)} - {files}")
+                await query.message.edit_text(
+                    "❌ **Error processing movie file**\n\n" 
+                    "There was an issue processing the movie file format.",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Back", callback_data="start")
+                    ]])
+                )
+                return
+            
+            logger.info(f"File info: {file_info.get('file_name', 'Unknown')}, size: {file_info.get('file_size', 'Unknown')}")
             
             # Send the movie file
             await query.message.edit_text(
@@ -557,8 +574,12 @@ async def cb_handler(client: Client, query: CallbackQuery):
             )
             
             # Get movie file details
+            logger.info(f"Getting file details for file_id: {file_id}")
             files = await get_file_details(file_id)
+            logger.info(f"Retrieved files type: {type(files)}")
+            
             if not files:
+                logger.error(f"No files found for file_id: {file_id}")
                 await query.message.edit_text(
                     "❌ **Movie file not found**\n\n" 
                     "Sorry, the requested movie file is no longer available.",
@@ -568,7 +589,22 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 )
                 return
             
-            file_info = files[0]
+            # Handle different return types from get_file_details
+            if isinstance(files, list) and len(files) > 0:
+                file_info = files[0]
+            elif isinstance(files, dict):
+                # If it's a dict, it might be the file info itself
+                file_info = files
+            else:
+                logger.error(f"Unexpected files format: {type(files)} - {files}")
+                await query.message.edit_text(
+                    "❌ **Error processing movie file**\n\n" 
+                    "There was an issue processing the movie file format.",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔙 Back", callback_data="start")
+                    ]])
+                )
+                return
             
             # Send the movie file
             await query.message.edit_text(

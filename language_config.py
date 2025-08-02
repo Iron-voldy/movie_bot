@@ -3,20 +3,25 @@ Simplified configuration - Only 2 required channels for joining, all languages f
 """
 
 # Required channels that all users must join before using the bot  
-# TEMPORARY: Empty list to disable channel checking for testing
-REQUIRED_CHANNELS = [
-    # Uncomment and replace with your actual channel IDs when ready:
-    # {
-    #     'channel': 'YOUR_CHANNEL_ID_1',
-    #     'name': 'Movies Channel 1',
-    #     'type': 'main'
-    # },
-    # {
-    #     'channel': 'YOUR_CHANNEL_ID_2',
-    #     'name': 'Movies Channel 2', 
-    #     'type': 'main'
-    # }
-]
+# Using the channels from info.py CHANNELS config
+REQUIRED_CHANNELS = []
+
+def _get_channels_from_info():
+    """Get channels from info.py configuration"""
+    try:
+        from info import CHANNELS
+        if CHANNELS:
+            return [
+                {
+                    'channel': ch,
+                    'name': f'Movie Channel {i+1}',
+                    'type': 'main'
+                }
+                for i, ch in enumerate(CHANNELS)
+            ]
+    except:
+        pass
+    return []
 
 # Legacy compatibility - keeping old structure but simplified
 COMMON_CHANNEL = 'YOUR_CHANNEL_ID_1'  # First required channel - REPLACE THIS
@@ -78,14 +83,34 @@ LANGUAGE_CHANNELS = SUBTITLE_LANGUAGES
 
 def get_required_channels():
     """Get list of all required channels"""
+    # First try to get from dynamic config
+    dynamic_channels = _get_channels_from_info() 
+    if dynamic_channels:
+        return [ch['channel'] for ch in dynamic_channels]
+    
+    # Fallback to static config
     return [ch['channel'] for ch in REQUIRED_CHANNELS]
 
 def get_channel_info(channel_id):
     """Get channel information by ID"""
+    # Try dynamic channels first
+    dynamic_channels = _get_channels_from_info()
+    if dynamic_channels:
+        for ch in dynamic_channels:
+            if str(ch['channel']) == str(channel_id):
+                return ch
+    
+    # Fallback to static config
     for ch in REQUIRED_CHANNELS:
-        if ch['channel'] == channel_id:
+        if str(ch['channel']) == str(channel_id):
             return ch
-    return None
+    
+    # If not found, return a default
+    return {
+        'channel': channel_id,
+        'name': f'Channel {channel_id}',
+        'type': 'main'
+    }
 
 def get_all_languages():
     """Get all available languages for subtitles"""

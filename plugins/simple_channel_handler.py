@@ -50,6 +50,12 @@ async def check_user_channels(client: Client, user_id: int) -> tuple:
         logger.info(f"No channels configured - allowing user {user_id}")
         return True, []
     
+    # TEMPORARY: For testing, allow all users if channels list is empty from info.py
+    from info import CHANNELS
+    if not CHANNELS:
+        logger.info(f"No channels in CHANNELS config - allowing user {user_id} for testing")
+        return True, []
+    
     logger.info(f"Checking channels for user {user_id}: {required_channel_ids}")
     
     for channel_id in required_channel_ids:

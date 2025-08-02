@@ -23,7 +23,9 @@ logger.setLevel(logging.INFO)
 async def send_subtitle_file(client, user_id, movie_name, language, display_name, flag):
     """Generate and send subtitle file for the selected language"""
     try:
+        import io
         logger.info(f"send_subtitle_file: Starting for {movie_name} in {language}")
+        
         # Get subtitles from the subtitle handler
         logger.info("Searching for subtitles...")
         subtitles = await subtitle_handler.search_subtitles(movie_name, language)
@@ -34,24 +36,29 @@ async def send_subtitle_file(client, user_id, movie_name, language, display_name
             subtitle_info = subtitles[0]
             logger.info(f"Using subtitle: {subtitle_info}")
             logger.info("Downloading subtitle content...")
-            subtitle_content = await subtitle_handler.download_subtitle(subtitle_info)
+            subtitle_content = await subtitle_handler.download_subtitle(subtitle_info, client)
             logger.info(f"Downloaded subtitle content: {len(subtitle_content) if subtitle_content else 0} bytes")
             
             if subtitle_content:
                 # Create filename for the subtitle
-                clean_movie_name = movie_name.replace('.mkv', '').replace('.mp4', '').replace('.avi', '')
+                clean_movie_name = movie_name.replace('.mkv', '').replace('.mp4', '').replace('.avi', '').replace('.', ' ')
                 subtitle_filename = f"{clean_movie_name}_{language}.srt"
+                
+                # Create BytesIO object for sending
+                subtitle_io = io.BytesIO(subtitle_content)
+                subtitle_io.name = subtitle_filename
                 
                 # Send subtitle as document
                 logger.info(f"Sending subtitle file: {subtitle_filename}")
                 await client.send_document(
                     chat_id=user_id,
-                    document=subtitle_content,
+                    document=subtitle_io,
                     file_name=subtitle_filename,
                     caption=f"📝 **{flag} {display_name} Subtitles**\n\n"
-                           f"Movie: {clean_movie_name}\n"
-                           f"Language: {display_name}\n"
-                           f"Format: SRT",
+                           f"🎬 Movie: {clean_movie_name}\n"
+                           f"🗣️ Language: {display_name}\n"
+                           f"📄 Format: SRT\n"
+                           f"📥 Ready to download!",
                     reply_markup=InlineKeyboardMarkup([[
                         InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
                     ]])
@@ -64,8 +71,8 @@ async def send_subtitle_file(client, user_id, movie_name, language, display_name
             chat_id=user_id,
             text=f"📝 **{flag} {display_name} Subtitles**\n\n"
                  f"❌ No subtitles available for this movie in {display_name}.\n"
-                 f"Movie: {movie_name}\n\n"
-                 f"You can still enjoy the movie or try a different language.",
+                 f"🎬 Movie: {movie_name}\n\n"
+                 f"💡 You can still enjoy the movie or try a different language.",
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
             ]])
@@ -74,12 +81,16 @@ async def send_subtitle_file(client, user_id, movie_name, language, display_name
         
     except Exception as e:
         logger.error(f"Error sending subtitle file: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        
         # Send error message
         await client.send_message(
             chat_id=user_id,
             text=f"📝 **Subtitle Error**\n\n"
                  f"❌ Error generating {display_name} subtitles.\n"
-                 f"Please enjoy the movie without subtitles.",
+                 f"🎬 Movie: {movie_name}\n\n"
+                 f"💡 Please enjoy the movie without subtitles or try again later.",
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
             ]])
@@ -117,7 +128,7 @@ async def pm_text(bot, message):
     user_id = message.from_user.id
     if content.startswith("/") or content.startswith("#"): return  # ignore commands and hashtags
     if user_id in ADMINS: return # ignore admins
-    await client.send_message(
+    await bot.send_message(
         chat_id=LOG_CHANNEL,
         text=f"#PM_Message\nUser: {user} ({user_id})\nMessage: {content}"
     )        

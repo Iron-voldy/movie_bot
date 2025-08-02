@@ -16,22 +16,43 @@ async def admin_forward_handler(client: Client, message: Message):
     try:
         user_id = message.from_user.id
         
-        # Check if message has media
+        logger.info(f"Admin {user_id} forwarded a message - checking for media...")
+        
+        # Enhanced media detection
         media = None
         file_type = None
         
-        if message.document:
+        # Check for different types of media
+        if hasattr(message, 'document') and message.document:
             media = message.document
             file_type = "document"
-        elif message.video:
+            logger.info(f"Found document: {media.file_name} ({media.file_size} bytes)")
+        elif hasattr(message, 'video') and message.video:
             media = message.video
             file_type = "video"
-        elif message.audio:
+            logger.info(f"Found video: {getattr(media, 'file_name', 'video')} ({media.file_size} bytes)")
+        elif hasattr(message, 'audio') and message.audio:
             media = message.audio
             file_type = "audio"
+            logger.info(f"Found audio: {getattr(media, 'file_name', 'audio')} ({media.file_size} bytes)")
+        
+        # Debug information
+        logger.info(f"Message type check - Document: {hasattr(message, 'document')}, Video: {hasattr(message, 'video')}, Audio: {hasattr(message, 'audio')}")
+        if hasattr(message, 'document'):
+            logger.info(f"Document object: {message.document}")
+        if hasattr(message, 'video'):
+            logger.info(f"Video object: {message.video}")
         
         if not media:
-            await message.reply("❌ No media file found in forwarded message.")
+            # More detailed error message
+            debug_info = f"**Debug Info:**\n"
+            debug_info += f"• Has document: {hasattr(message, 'document')}\n"
+            debug_info += f"• Has video: {hasattr(message, 'video')}\n"
+            debug_info += f"• Has audio: {hasattr(message, 'audio')}\n"
+            debug_info += f"• Message type: {type(message)}\n"
+            debug_info += f"• Forward from chat: {message.forward_from_chat is not None}\n"
+            
+            await message.reply(f"❌ **No media file found in forwarded message.**\n\n{debug_info}")
             return
         
         # Check if it's forwarded from a valid channel
@@ -47,6 +68,54 @@ async def admin_forward_handler(client: Client, message: Message):
         # Set media properties for saving
         media.file_type = file_type
         media.caption = message.caption or ""
+        
+        # Enhanced file name handling
+        if not hasattr(media, 'file_name') or not media.file_name:
+            # Generate filename from caption or use default
+            if message.caption:
+                # Extract potential filename from caption
+                import re
+                filename_match = re.search(r'([^\n]+\.(?:mkv|mp4|avi|mov|wmv|flv|webm|m4v))', message.caption, re.IGNORECASE)
+                if filename_match:
+                    media.file_name = filename_match.group(1).strip()
+                else:
+                    # Use first line of caption as filename
+                    first_line = message.caption.split('\n')[0].strip()
+                    media.file_name = f"{first_line}.mp4" if first_line else f"Movie_{media.file_unique_id}.mp4"
+            else:
+                media.file_name = f"Movie_{media.file_unique_id}.mp4"
+        
+        logger.info(f"Processing file: {media.file_name} (Type: {file_type}, Size: {media.file_size})")
+        
+        # Check for duplicates before saving
+        from database.ia_filterdb import primary_col, secondary_col
+        
+        # Check if file already exists by unique_id or file_name
+        existing_file = None
+        try:
+            # Check by unique_id first (most reliable)
+            existing_file = primary_col.find_one({'_id': media.file_unique_id})
+            if not existing_file:
+                existing_file = secondary_col.find_one({'_id': media.file_unique_id})
+            
+            # If not found by unique_id, check by file_name (less reliable but catches similar files)
+            if not existing_file:
+                existing_file = primary_col.find_one({'file_name': media.file_name})
+                if not existing_file:
+                    existing_file = secondary_col.find_one({'file_name': media.file_name})
+                    
+        except Exception as e:
+            logger.error(f"Error checking for duplicates: {e}")
+        
+        if existing_file:
+            await message.reply(
+                f"⚠️ **Duplicate File Detected**\n\n"
+                f"📁 **File:** {media.file_name}\n"
+                f"📺 **Channel:** {forward_from_title}\n"
+                f"🔍 **Match:** Found existing file with same {'unique ID' if existing_file.get('_id') == media.file_unique_id else 'filename'}\n\n"
+                f"🚫 **Not added** - This movie is already in the database."
+            )
+            return
         
         # Save to database
         success, status = await save_file(media)

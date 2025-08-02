@@ -545,8 +545,12 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 logger.info(f"Document ID: {file_info['_id']}")
                 logger.info(f"Caption: {f_caption[:100]}...")
                 
-                # Try to send the cached document
+                # Try multiple methods to send the movie file
+                file_sent = False
+                
+                # Method 1: Try sending with the stored file_id
                 try:
+                    logger.info(f"Method 1: Trying with stored file_id: {file_info['_id']}")
                     await client.send_document(
                         chat_id=query.from_user.id,
                         document=file_info['_id'],
@@ -555,21 +559,90 @@ async def cb_handler(client: Client, query: CallbackQuery):
                             InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
                         ]])
                     )
+                    file_sent = True
+                    logger.info("✅ Method 1 successful - File sent with stored file_id")
                 except Exception as doc_error:
-                    logger.error(f"send_document failed: {doc_error}")
-                    # Final fallback - send file info as message with inline search
+                    logger.error(f"❌ Method 1 failed: {doc_error}")
+                
+                # Method 2: Try to get file from channels if Method 1 failed
+                if not file_sent:
+                    try:
+                        logger.info("Method 2: Trying to get file from channels...")
+                        from info import CHANNELS
+                        
+                        # Search for the file in configured channels
+                        for channel_id in CHANNELS:
+                            try:
+                                logger.info(f"Searching in channel {channel_id}")
+                                # Try to get the file from the channel by searching recent messages
+                                async for channel_message in client.get_chat_history(channel_id, limit=500):
+                                    if (hasattr(channel_message, 'document') and channel_message.document and 
+                                        channel_message.document.file_name == file_info['file_name']):
+                                        
+                                        logger.info(f"Found matching file in channel {channel_id}")
+                                        await client.copy_message(
+                                            chat_id=query.from_user.id,
+                                            from_chat_id=channel_id,
+                                            message_id=channel_message.id,
+                                            caption=f_caption,
+                                            reply_markup=InlineKeyboardMarkup([[
+                                                InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                                            ]])
+                                        )
+                                        file_sent = True
+                                        logger.info("✅ Method 2 successful - File copied from channel")
+                                        break
+                                        
+                                    elif (hasattr(channel_message, 'video') and channel_message.video and 
+                                          getattr(channel_message.video, 'file_name', '') == file_info['file_name']):
+                                        
+                                        logger.info(f"Found matching video in channel {channel_id}")
+                                        await client.copy_message(
+                                            chat_id=query.from_user.id,
+                                            from_chat_id=channel_id,
+                                            message_id=channel_message.id,
+                                            caption=f_caption,
+                                            reply_markup=InlineKeyboardMarkup([[
+                                                InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                                            ]])
+                                        )
+                                        file_sent = True
+                                        logger.info("✅ Method 2 successful - Video copied from channel")
+                                        break
+                                
+                                if file_sent:
+                                    break
+                                    
+                            except Exception as channel_error:
+                                logger.error(f"Error searching channel {channel_id}: {channel_error}")
+                                continue
+                                
+                    except Exception as method2_error:
+                        logger.error(f"❌ Method 2 failed: {method2_error}")
+                
+                # Method 3: Send file info with inline search if both methods failed
+                if not file_sent:
+                    logger.warning("❌ All methods failed - sending file info as fallback")
                     await client.send_message(
                         chat_id=query.from_user.id,
                         text=f"🎬 **{file_info['file_name']}**\n\n"
-                             f"📁 Size: {get_size(file_info['file_size'])}\n"
-                             f"🆔 File ID: `{file_info['_id']}`\n\n"
-                             f"❌ Unable to send file directly. Please use inline search to get this movie.",
+                             f"📁 **Size:** {get_size(file_info['file_size'])}\n"
+                             f"🆔 **File ID:** `{file_info['_id']}`\n\n"
+                             f"❌ **Unable to send file directly**\n"
+                             f"💡 **Try these options:**\n"
+                             f"• Use inline search below\n"
+                             f"• Search for the movie name again\n"
+                             f"• Contact admin if issue persists",
                         reply_markup=InlineKeyboardMarkup([[
-                            InlineKeyboardButton("🔍 Search Inline", switch_inline_query_current_chat=file_info['file_name'][:30])
+                            InlineKeyboardButton("🔍 Search Inline", switch_inline_query_current_chat=file_info['file_name'][:30]),
+                            InlineKeyboardButton("🔄 Try Again", callback_data=f"files#{file_info['_id']}")
                         ]])
                     )
                 
-                logger.info("Movie file sent successfully, now sending subtitle")
+                if file_sent:
+                    logger.info("Movie file sent successfully, now sending subtitle")
+                else:
+                    logger.warning("Movie file delivery failed, but continuing with subtitle")
                 
                 # Generate and send subtitle file
                 logger.info("About to send subtitle file")

@@ -587,15 +587,19 @@ async def cb_handler(client: Client, query: CallbackQuery):
                         logger.warning(f"🔄 File ID appears expired for: {file_info['file_name']}")
                         
                         # Log this for admin attention
-                        await client.send_message(
-                            chat_id=ADMINS[0] if ADMINS else query.from_user.id,
-                            text=f"⚠️ **Expired File ID Detected**\n\n"
-                                 f"📁 **File:** {file_info['file_name']}\n"
-                                 f"🆔 **File ID:** `{stored_file_id}`\n"
-                                 f"👤 **User:** {query.from_user.id}\n\n"
-                                 f"💡 **Action needed:** Forward a fresh copy of this movie to update the database.\n\n"
-                                 f"Use `/test_file_id {stored_file_id}` to verify."
-                        )
+                        try:
+                            admin_chat = ADMINS[0] if ADMINS else query.from_user.id
+                            await client.send_message(
+                                chat_id=admin_chat,
+                                text=f"⚠️ **Expired File ID Detected**\n\n"
+                                     f"📁 **File:** {file_info['file_name']}\n"
+                                     f"🆔 **File ID:** `{stored_file_id}`\n"
+                                     f"👤 **User:** {query.from_user.id}\n\n"
+                                     f"💡 **Action needed:** Forward a fresh copy of this movie to update the database.\n\n"
+                                     f"Use `/test_file_id {stored_file_id}` to verify."
+                            )
+                        except Exception as notify_error:
+                            logger.error(f"Could not notify admin: {notify_error}")
                     
                     # Method 1b: Try as video if document failed
                     if not file_sent and 'video' in file_info.get('file_type', '').lower():

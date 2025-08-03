@@ -550,19 +550,44 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 
                 # Method 1: Try sending with the stored file_id
                 try:
-                    logger.info(f"Method 1: Trying with stored file_id: {file_info['_id']}")
-                    await client.send_document(
+                    stored_file_id = file_info['_id']
+                    logger.info(f"Method 1: Trying with stored file_id: {stored_file_id}")
+                    logger.info(f"File ID type: {type(stored_file_id)}")
+                    logger.info(f"File ID length: {len(str(stored_file_id))}")
+                    
+                    # Try to send the document
+                    sent_message = await client.send_document(
                         chat_id=query.from_user.id,
-                        document=file_info['_id'],
+                        document=stored_file_id,
                         caption=f_caption,
                         reply_markup=InlineKeyboardMarkup([[
                             InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
                         ]])
                     )
                     file_sent = True
-                    logger.info("✅ Method 1 successful - File sent with stored file_id")
+                    logger.info(f"✅ Method 1 successful - File sent with ID: {sent_message.id}")
+                    
                 except Exception as doc_error:
-                    logger.error(f"❌ Method 1 failed: {doc_error}")
+                    logger.error(f"❌ Method 1 failed with error: {doc_error}")
+                    logger.error(f"Error type: {type(doc_error)}")
+                    
+                    # Try alternative approach for file sending
+                    try:
+                        logger.info("Method 1b: Trying alternative send approach...")
+                        # If it's a video file, try send_video
+                        if file_info.get('file_type') == 'video':
+                            sent_message = await client.send_video(
+                                chat_id=query.from_user.id,
+                                video=stored_file_id,
+                                caption=f_caption,
+                                reply_markup=InlineKeyboardMarkup([[
+                                    InlineKeyboardButton("🔍 Search More", switch_inline_query_current_chat="")
+                                ]])
+                            )
+                            file_sent = True
+                            logger.info("✅ Method 1b successful - Video sent")
+                    except Exception as alt_error:
+                        logger.error(f"❌ Method 1b also failed: {alt_error}")
                 
                 # Method 2: Try to get file from channels if Method 1 failed
                 if not file_sent:

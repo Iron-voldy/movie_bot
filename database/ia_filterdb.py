@@ -34,30 +34,75 @@ def get_database_count():
     return primary_count, secondary_count
 
 async def save_file(media):
-    """Save file to available database"""
-    file_id, file_ref = unpack_new_file_id(media.file_id)
-    file_name = re.sub(r"(_|\-|\.|\+)", " ", str(media.file_name))
-
-    document = {
-        '_id': file_id,
-        'file_name': file_name,
-        'file_size': media.file_size
-    }
-
+    """Save file to available database with enhanced error handling"""
     try:
-        primary_col.insert_one(document)
-        logger.info(f'{file_name} saved to primary database')
-        return True, 1
-    except DuplicateKeyError:
-        logger.warning(f'{file_name} already exists in primary database')
-        return False, 0
-    except OperationFailure as e:
-        if 'quota' in str(e).lower():
-            logger.warning("Primary database over quota")
-            return await save_to_secondary(document, file_name)
+        # Enhanced file ID processing with error handling
+        logger.info(f"Processing file for database save...")
+        logger.info(f"Media type: {type(media)}")
+        logger.info(f"File ID: {getattr(media, 'file_id', 'Missing')}")
+        logger.info(f"File name: {getattr(media, 'file_name', 'Missing')}")
+        logger.info(f"File size: {getattr(media, 'file_size', 'Missing')}")
+        
+        # Get file ID
+        if not hasattr(media, 'file_id') or not media.file_id:
+            logger.error("Media object missing file_id")
+            return False, 3
+            
+        # Process file ID
+        try:
+            file_id, file_ref = unpack_new_file_id(media.file_id)
+            logger.info(f"Processed file_id: {file_id}")
+        except Exception as e:
+            logger.error(f"Error processing file_id: {e}")
+            # Fallback: use the original file_id if processing fails
+            file_id = media.file_id
+            logger.info(f"Using original file_id as fallback: {file_id}")
+        
+        # Process file name
+        if hasattr(media, 'file_name') and media.file_name:
+            file_name = re.sub(r"(_|\-|\.|\+)", " ", str(media.file_name))
         else:
-            logger.error(f"Primary database error: {e}")
+            # Generate a filename if missing
+            file_name = f"Movie_{getattr(media, 'file_unique_id', 'unknown')}"
+            if hasattr(media, 'file_type'):
+                file_name += f".{media.file_type}"
+            logger.info(f"Generated filename: {file_name}")
+
+        # Create document for database
+        document = {
+            '_id': file_id,
+            'file_name': file_name,
+            'file_size': getattr(media, 'file_size', 0),
+            'file_type': getattr(media, 'file_type', 'unknown'),
+            'file_unique_id': getattr(media, 'file_unique_id', None)
+        }
+        
+        logger.info(f"Document to save: {document}")
+
+        # Try to save to primary database
+        try:
+            result = primary_col.insert_one(document)
+            logger.info(f'{file_name} saved to primary database with ID: {result.inserted_id}')
+            return True, 1
+        except DuplicateKeyError:
+            logger.warning(f'{file_name} already exists in primary database')
+            return False, 0
+        except OperationFailure as e:
+            if 'quota' in str(e).lower():
+                logger.warning("Primary database over quota, trying secondary")
+                return await save_to_secondary(document, file_name)
+            else:
+                logger.error(f"Primary database operation error: {e}")
+                return False, 2
+        except Exception as e:
+            logger.error(f"Unexpected error saving to primary database: {e}")
             return False, 2
+            
+    except Exception as e:
+        logger.error(f"Critical error in save_file: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        return False, 4
 
 
 async def save_to_secondary(document, file_name):

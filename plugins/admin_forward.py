@@ -10,15 +10,22 @@ from utils import temp
 
 logger = logging.getLogger(__name__)
 
-@Client.on_message(filters.private & filters.forwarded & filters.user(ADMINS))
+@Client.on_message(filters.private & filters.user(ADMINS))
 async def admin_forward_handler(client: Client, message: Message):
-    """Handle admin forwarded messages to add movies to database"""
+    """Handle admin forwarded messages to add movies to database - Enhanced Debug Version"""
     try:
         user_id = message.from_user.id
         
-        logger.info(f"Admin {user_id} forwarded a message - checking for media...")
+        # Check if user is admin first
+        if user_id not in ADMINS:
+            logger.info(f"Non-admin user {user_id} tried to use admin forwarding")
+            return
         
-        # Enhanced media detection
+        logger.info(f"Admin {user_id} sent a message - analyzing...")
+        logger.info(f"Message has forward info: {hasattr(message, 'forward_from_chat') and message.forward_from_chat is not None}")
+        logger.info(f"Message content type: Document={hasattr(message, 'document') and message.document is not None}, Video={hasattr(message, 'video') and message.video is not None}, Audio={hasattr(message, 'audio') and message.audio is not None}")
+        
+        # Enhanced media detection - check forwarded OR direct media
         media = None
         file_type = None
         
@@ -26,44 +33,53 @@ async def admin_forward_handler(client: Client, message: Message):
         if hasattr(message, 'document') and message.document:
             media = message.document
             file_type = "document"
-            logger.info(f"Found document: {media.file_name} ({media.file_size} bytes)")
+            logger.info(f"Found document: {getattr(media, 'file_name', 'Unknown')} ({media.file_size} bytes)")
         elif hasattr(message, 'video') and message.video:
             media = message.video
             file_type = "video"
-            logger.info(f"Found video: {getattr(media, 'file_name', 'video')} ({media.file_size} bytes)")
+            logger.info(f"Found video: {getattr(media, 'file_name', 'Unknown')} ({media.file_size} bytes)")
         elif hasattr(message, 'audio') and message.audio:
             media = message.audio
             file_type = "audio"
-            logger.info(f"Found audio: {getattr(media, 'file_name', 'audio')} ({media.file_size} bytes)")
+            logger.info(f"Found audio: {getattr(media, 'file_name', 'Unknown')} ({media.file_size} bytes)")
         
-        # Debug information
-        logger.info(f"Message type check - Document: {hasattr(message, 'document')}, Video: {hasattr(message, 'video')}, Audio: {hasattr(message, 'audio')}")
-        if hasattr(message, 'document'):
-            logger.info(f"Document object: {message.document}")
-        if hasattr(message, 'video'):
-            logger.info(f"Video object: {message.video}")
-        
+        # If no media found, provide detailed feedback
         if not media:
-            # More detailed error message
-            debug_info = f"**Debug Info:**\n"
-            debug_info += f"• Has document: {hasattr(message, 'document')}\n"
-            debug_info += f"• Has video: {hasattr(message, 'video')}\n"
-            debug_info += f"• Has audio: {hasattr(message, 'audio')}\n"
-            debug_info += f"• Message type: {type(message)}\n"
-            debug_info += f"• Forward from chat: {message.forward_from_chat is not None}\n"
+            debug_info = f"**🔍 Debug Analysis:**\n"
+            debug_info += f"• User ID: {user_id}\n"
+            debug_info += f"• Is Admin: {user_id in ADMINS}\n"
+            debug_info += f"• Has Document: {hasattr(message, 'document') and message.document is not None}\n"
+            debug_info += f"• Has Video: {hasattr(message, 'video') and message.video is not None}\n"
+            debug_info += f"• Has Audio: {hasattr(message, 'audio') and message.audio is not None}\n"
+            debug_info += f"• Has Text: {hasattr(message, 'text') and message.text is not None}\n"
+            debug_info += f"• Is Forwarded: {hasattr(message, 'forward_from_chat') and message.forward_from_chat is not None}\n"
+            debug_info += f"• Message Type: {type(message).__name__}\n"
             
-            await message.reply(f"❌ **No media file found in forwarded message.**\n\n{debug_info}")
+            if hasattr(message, 'text') and message.text:
+                debug_info += f"• Text Content: {message.text[:100]}...\n"
+            
+            await message.reply(
+                f"❌ **No Media File Detected**\n\n"
+                f"Please forward or send a movie file (video/document/audio).\n\n"
+                f"{debug_info}\n"
+                f"💡 **Tips:**\n"
+                f"• Forward a movie file from a channel\n"
+                f"• Send a movie file directly\n"
+                f"• Make sure the file is a video/document/audio\n"
+            )
             return
         
-        # Check if it's forwarded from a valid channel
-        if not message.forward_from_chat:
-            await message.reply("❌ This message is not forwarded from a channel.")
-            return
-        
-        forward_from_id = message.forward_from_chat.id
-        forward_from_title = message.forward_from_chat.title or "Unknown Channel"
-        
-        logger.info(f"Admin {user_id} forwarded {file_type} from channel {forward_from_id} ({forward_from_title})")
+        # Determine source information
+        if message.forward_from_chat:
+            forward_from_id = message.forward_from_chat.id
+            forward_from_title = message.forward_from_chat.title or "Unknown Channel"
+            source_info = f"Forwarded from: {forward_from_title} ({forward_from_id})"
+            logger.info(f"Admin {user_id} forwarded {file_type} from channel {forward_from_id} ({forward_from_title})")
+        else:
+            forward_from_id = "direct_upload"
+            forward_from_title = "Direct Upload"
+            source_info = "Direct upload by admin"
+            logger.info(f"Admin {user_id} directly uploaded {file_type}")
         
         # Set media properties for saving
         media.file_type = file_type
@@ -117,38 +133,67 @@ async def admin_forward_handler(client: Client, message: Message):
             )
             return
         
-        # Save to database
-        success, status = await save_file(media)
+        # Enhanced database saving with detailed logging
+        logger.info(f"Attempting to save file: {media.file_name}")
+        logger.info(f"File ID: {getattr(media, 'file_id', 'Not found')}")
+        logger.info(f"File unique ID: {getattr(media, 'file_unique_id', 'Not found')}")
+        logger.info(f"File size: {media.file_size}")
+        logger.info(f"File type: {file_type}")
         
-        if success:
-            # Add to channels list if not already there
-            if forward_from_id not in CHANNELS:
-                CHANNELS.append(forward_from_id)
-                logger.info(f"Added new channel {forward_from_id} to CHANNELS list")
+        try:
+            success, status = await save_file(media)
+            logger.info(f"Save result - Success: {success}, Status: {status}")
+            
+            if success:
+                # Add to channels list if it's a forwarded message and not already there
+                if message.forward_from_chat and forward_from_id not in CHANNELS and isinstance(forward_from_id, int):
+                    CHANNELS.append(forward_from_id)
+                    logger.info(f"Added new channel {forward_from_id} to CHANNELS list")
+                
+                await message.reply(
+                    f"✅ **Movie Added Successfully!**\n\n"
+                    f"📁 **File:** {media.file_name}\n"
+                    f"📏 **Size:** {media.file_size:,} bytes\n"
+                    f"🎬 **Type:** {file_type.title()}\n"
+                    f"📺 **Source:** {forward_from_title}\n"
+                    f"🆔 **File ID:** `{getattr(media, 'file_id', 'Unknown')[:20]}...`\n\n"
+                    f"✨ Users can now search for this movie!\n"
+                    f"🔍 Try searching: `{media.file_name.split('.')[0]}`"
+                )
+                logger.info(f"✅ Successfully processed and saved: {media.file_name}")
+                
+            else:
+                if status == 0:  # Already exists
+                    await message.reply(
+                        f"⚠️ **File Already Exists**\n\n"
+                        f"📁 **File:** {media.file_name}\n"
+                        f"📺 **Source:** {forward_from_title}\n\n"
+                        f"🔍 This movie is already in the database.\n"
+                        f"Users can search: `{media.file_name.split('.')[0]}`"
+                    )
+                    logger.info(f"⚠️ File already exists: {media.file_name}")
+                else:  # Error occurred
+                    await message.reply(
+                        f"❌ **Database Error**\n\n"
+                        f"📁 **File:** {media.file_name}\n"
+                        f"📺 **Source:** {forward_from_title}\n"
+                        f"⚠️ **Status Code:** {status}\n\n"
+                        f"Please check logs and try again."
+                    )
+                    logger.error(f"❌ Database error for file: {media.file_name}, Status: {status}")
+                    
+        except Exception as save_error:
+            logger.error(f"Exception during save_file: {save_error}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             
             await message.reply(
-                f"✅ **Movie Added Successfully!**\n\n"
+                f"❌ **Unexpected Error**\n\n"
                 f"📁 **File:** {media.file_name}\n"
-                f"📏 **Size:** {media.file_size} bytes\n"
-                f"📺 **Channel:** {forward_from_title}\n"
-                f"🆔 **Channel ID:** `{forward_from_id}`\n\n"
-                f"Users can now search for this movie!"
+                f"📺 **Source:** {forward_from_title}\n"
+                f"❌ **Error:** {str(save_error)}\n\n"
+                f"Please check the bot logs for details."
             )
-        else:
-            if status == 0:  # Already exists
-                await message.reply(
-                    f"⚠️ **File Already Exists**\n\n"
-                    f"📁 **File:** {media.file_name}\n"
-                    f"📺 **Channel:** {forward_from_title}\n\n"
-                    f"This movie is already in the database."
-                )
-            else:  # Error occurred
-                await message.reply(
-                    f"❌ **Error Adding File**\n\n"
-                    f"📁 **File:** {media.file_name}\n"
-                    f"📺 **Channel:** {forward_from_title}\n\n"
-                    f"There was an error adding this movie to the database."
-                )
         
     except Exception as e:
         logger.error(f"Error in admin forward handler: {e}")
@@ -301,3 +346,81 @@ async def remove_channel_command(client: Client, message: Message):
     except Exception as e:
         logger.error(f"Error in remove channel command: {e}")
         await message.reply("❌ An error occurred while removing the channel.")
+
+@Client.on_message(filters.command("testdb") & filters.user(ADMINS))
+async def test_database_command(client: Client, message: Message):
+    """Test database connectivity and functionality"""
+    try:
+        await message.reply("🔍 **Testing Database...**")
+        
+        # Test database connection
+        from database.ia_filterdb import primary_col, secondary_col, get_database_count
+        
+        try:
+            primary_count, secondary_count = get_database_count()
+            total_movies = primary_count + secondary_count
+            
+            test_result = f"✅ **Database Test Results**\n\n"
+            test_result += f"🎬 **Total Movies:** {total_movies}\n"
+            test_result += f"📊 **Primary DB:** {primary_count} movies\n"
+            test_result += f"📊 **Secondary DB:** {secondary_count} movies\n\n"
+            
+            if total_movies > 0:
+                # Get sample movie
+                sample = primary_col.find_one()
+                if sample:
+                    test_result += f"📁 **Sample Movie:**\n"
+                    test_result += f"   • Name: {sample.get('file_name', 'Unknown')}\n"
+                    test_result += f"   • Size: {sample.get('file_size', 0):,} bytes\n"
+                    test_result += f"   • ID: {str(sample.get('_id', 'Unknown'))[:30]}...\n\n"
+                
+                test_result += f"✅ **Database Status:** Ready for use!\n"
+                test_result += f"🚀 **System Status:** Operational"
+            else:
+                test_result += f"⚠️ **Database is empty**\n"
+                test_result += f"💡 Forward some movie files to populate it!"
+            
+        except Exception as db_error:
+            test_result = f"❌ **Database Error:**\n{str(db_error)}"
+        
+        await message.reply(test_result)
+        
+    except Exception as e:
+        await message.reply(f"❌ **Test failed:** {str(e)}")
+
+@Client.on_message(filters.command("adminhelp") & filters.user(ADMINS))
+async def admin_help_command(client: Client, message: Message):
+    """Show admin help and debugging commands"""
+    help_text = f"""🛠 **Admin Commands & Debug Guide**
+
+📋 **Available Commands:**
+• `/testdb` - Test database connectivity
+• `/addchannel <id>` - Add channel manually
+• `/channels` - List all channels
+• `/removechannel <id>` - Remove channel
+• `/adminhelp` - Show this help
+
+🎬 **Adding Movies:**
+1. Forward movie files from channels
+2. Send movie files directly to the bot
+3. Bot will detect and save automatically
+
+🔍 **Debugging Steps:**
+If movies aren't being added:
+1. Check you're an admin: Your ID should be in ADMINS list
+2. Use `/testdb` to check database
+3. Forward a movie file and check the response
+4. Check bot logs for detailed error info
+
+📊 **Current Admin Status:**
+• Your ID: `{message.from_user.id}`
+• Admin List: `{ADMINS}`
+• Is Admin: {'✅ Yes' if message.from_user.id in ADMINS else '❌ No'}
+
+💡 **Tips:**
+• Movie files must be videos, documents, or audio
+• Bot supports forwarded and direct uploads
+• Check logs for detailed error information
+• Use `/testdb` regularly to monitor system health"""
+
+    await message.reply(help_text)

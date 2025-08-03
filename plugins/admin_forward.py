@@ -4,7 +4,7 @@ Admin channel forwarding handler - Automatically add movies to database when adm
 import logging
 from hydrogram import Client, filters
 from hydrogram.types import Message
-from database.advanced_filterdb import save_file
+from database.ia_filterdb import save_file
 from info import ADMINS, CHANNELS
 from utils import temp
 
@@ -104,7 +104,7 @@ async def admin_forward_handler(client: Client, message: Message):
         logger.info(f"Processing file: {media.file_name} (Type: {file_type}, Size: {media.file_size})")
         
         # Check for duplicates before saving
-        from database.advanced_filterdb import primary_col, secondary_col
+        from database.ia_filterdb import primary_col, secondary_col
         
         # Check if file already exists by unique_id or file_name
         existing_file = None
@@ -354,7 +354,7 @@ async def test_database_command(client: Client, message: Message):
         await message.reply("🔍 **Testing Database...**")
         
         # Test database connection
-        from database.advanced_filterdb import primary_col, secondary_col, get_database_count
+        from database.ia_filterdb import primary_col, secondary_col, get_database_count
         
         try:
             primary_count, secondary_count = get_database_count()

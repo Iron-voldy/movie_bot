@@ -1,6 +1,6 @@
 from hydrogram import Client, filters
 from info import CHANNELS
-from database.advanced_filterdb import save_file
+from database.ia_filterdb import save_file
 import logging
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ async def media(bot, message):
         logger.info(f"Processing {file_type}: {media.file_name} ({media.file_size} bytes)")
 
         # Check for duplicates before saving
-        from database.advanced_filterdb import primary_col, secondary_col
+        from database.ia_filterdb import primary_col, secondary_col
         
         existing_file = None
         try:

@@ -13,7 +13,7 @@ from hydrogram import Client, filters, enums
 from hydrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
 from utils import format_size, remove_username_from_filename, get_size, is_subscribed, get_poster, temp
 from database.users_chats_db import db
-from database.advanced_filterdb import delete_func, get_database_count, get_file_details, get_search_results, get_delete_results, get_database_size
+from database.ia_filterdb import delete_func, get_database_count, get_file_details, get_search_results, get_delete_results, get_database_size
 from real_subtitle_handler import real_subtitle_handler as subtitle_handler
 import logging, random, psutil
 
@@ -116,14 +116,9 @@ async def next_back(data, offset=0, max_results=0):
     return out_data, next_offset, total_results
 
 
-# Auto-filter is now handled by advanced_autofilter.py
-# This import ensures the advanced system is loaded
-from .advanced_autofilter import perform_auto_filter
-
 @Client.on_message((filters.group | filters.private) & filters.text & filters.incoming)
 async def give_filter(client, message):
-    # Use the enhanced auto-filter system
-    await perform_auto_filter(client, message)
+    await auto_filter(client, message)
         
 
 @Client.on_message(filters.private & filters.text & filters.incoming)

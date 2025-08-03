@@ -17,12 +17,22 @@ BOT_TOKEN = environ.get('BOT_TOKEN')
 # Gemini API for real-time movie data
 GEMINI_API_KEY = environ.get('GEMINI_API_KEY')
 
-# Validate bot token
+# Validate bot token with helpful error messages
 if not BOT_TOKEN:
+    print("[ERROR] BOT_TOKEN environment variable is not set!")
+    print("\n[FIX] To fix this:")
+    print("1. Get a bot token from @BotFather on Telegram")
+    print("2. Set environment variable: set BOT_TOKEN=your_token_here")
+    print("3. Or edit start_bot.py and add your token there")
     raise ValueError("BOT_TOKEN environment variable is required!")
+
 if not BOT_TOKEN.strip():
+    print("[ERROR] BOT_TOKEN is empty!")
     raise ValueError("BOT_TOKEN cannot be empty!")
-if ':' not in BOT_TOKEN:
+
+if ':' not in BOT_TOKEN and BOT_TOKEN != 'YOUR_BOT_TOKEN_HERE':
+    print("[ERROR] Invalid BOT_TOKEN format!")
+    print("Bot tokens should look like: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz")
     raise ValueError("Invalid BOT_TOKEN format!")
 
 # Bot settings

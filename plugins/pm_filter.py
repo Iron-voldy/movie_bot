@@ -553,13 +553,16 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 logger.info(f"Starting enhanced movie delivery for: {file_info['file_name']}")
                 logger.info(f"File ID: {stored_file_id} (type: {type(stored_file_id)}, length: {len(str(stored_file_id))})")
                 
-                # Method 1: Direct file ID sending with validation
+                # Method 1: Enhanced direct file ID sending with validation
                 try:
                     logger.info("Method 1: Trying direct file ID send...")
                     
-                    # Validate file ID format first
-                    if len(str(stored_file_id)) < 10:
+                    # Enhanced file ID validation
+                    if not stored_file_id or len(str(stored_file_id)) < 10:
                         raise ValueError("File ID too short - likely invalid")
+                    
+                    if len(str(stored_file_id)) > 200:
+                        raise ValueError("File ID too long - likely corrupted")
                     
                     # Try sending as document first
                     sent_message = await client.send_document(
@@ -575,8 +578,24 @@ async def cb_handler(client: Client, query: CallbackQuery):
                     logger.info(f"✅ Method 1 successful - Document sent with message ID: {sent_message.id}")
                     
                 except Exception as doc_error:
+                    error_msg = str(doc_error).lower()
                     delivery_methods.append(f"❌ Direct file ID: {str(doc_error)[:50]}...")
                     logger.error(f"❌ Method 1 failed: {doc_error}")
+                    
+                    # Check if it's a MEDIA_EMPTY error (expired file ID)
+                    if 'media_empty' in error_msg or 'invalid' in error_msg:
+                        logger.warning(f"🔄 File ID appears expired for: {file_info['file_name']}")
+                        
+                        # Log this for admin attention
+                        await client.send_message(
+                            chat_id=ADMINS[0] if ADMINS else query.from_user.id,
+                            text=f"⚠️ **Expired File ID Detected**\n\n"
+                                 f"📁 **File:** {file_info['file_name']}\n"
+                                 f"🆔 **File ID:** `{stored_file_id}`\n"
+                                 f"👤 **User:** {query.from_user.id}\n\n"
+                                 f"💡 **Action needed:** Forward a fresh copy of this movie to update the database.\n\n"
+                                 f"Use `/test_file_id {stored_file_id}` to verify."
+                        )
                     
                     # Method 1b: Try as video if document failed
                     if not file_sent and 'video' in file_info.get('file_type', '').lower():

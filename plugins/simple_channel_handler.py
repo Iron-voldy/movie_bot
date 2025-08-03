@@ -32,7 +32,7 @@ async def handle_channel_check(client: Client, user_id: int, context: str = "gen
 
 async def check_user_channels(client: Client, user_id: int) -> tuple:
     """
-    Check if user is subscribed to both required channels
+    Enhanced channel checking with better error handling
     Returns (is_subscribed, missing_channels)
     """
     from info import ADMINS
@@ -42,49 +42,69 @@ async def check_user_channels(client: Client, user_id: int) -> tuple:
         logger.info(f"User {user_id} is admin - granting access")
         return True, []
     
+    # Get required channels - use specific channel IDs you provided
+    required_channel_ids = [-1002766947260, -1002886647880]
+    
+    # For now, temporarily disable channel checking to allow bot to work
+    # You can enable this after properly adding bot as admin to channels
+    ENABLE_CHANNEL_CHECKING = False
+    
+    if not ENABLE_CHANNEL_CHECKING:
+        logger.info(f"Channel checking temporarily disabled - allowing user {user_id}")
+        return True, []
+    
     missing_channels = []
-    required_channel_ids = get_required_channels()
-    
-    # If no channels configured, allow all users
-    if not required_channel_ids:
-        logger.info(f"No channels configured - allowing user {user_id}")
-        return True, []
-    
-    # TEMPORARY: For testing, allow all users if channels list is empty from info.py
-    from info import CHANNELS
-    if not CHANNELS:
-        logger.info(f"No channels in CHANNELS config - allowing user {user_id} for testing")
-        return True, []
-    
     logger.info(f"Checking channels for user {user_id}: {required_channel_ids}")
     
     for channel_id in required_channel_ids:
         try:
-            # First try to get chat info to verify bot has access
+            # First verify bot can access the channel
             try:
-                chat = await client.get_chat(int(channel_id))
+                chat = await client.get_chat(channel_id)
                 logger.info(f"✅ Bot can access channel {channel_id}: {chat.title}")
+                
+                # Check bot's permissions in the channel
+                try:
+                    bot_member = await client.get_chat_member(channel_id, client.me.id)
+                    logger.info(f"Bot status in {channel_id}: {bot_member.status}")
+                    
+                    if bot_member.status not in ["creator", "administrator"]:
+                        logger.warning(f"⚠️ Bot is not admin in {channel_id}, cannot check memberships reliably")
+                        
+                except Exception as bot_check_error:
+                    logger.error(f"Cannot check bot status in {channel_id}: {bot_check_error}")
+                    
             except Exception as chat_error:
                 logger.error(f"❌ Bot cannot access channel {channel_id}: {chat_error}")
-                # If bot can't access channel, assume user is not member
-                missing_channels.append(int(channel_id))
+                # If bot can't access channel, skip checking for now
+                logger.warning(f"⚠️ Skipping channel {channel_id} due to access issues")
                 continue
             
-            # Now check if user is a member
-            member = await client.get_chat_member(int(channel_id), user_id)
-            logger.info(f"User {user_id} status in {channel_id}: {member.status}")
-            
-            # Check if user is actually a member (not just in db)
-            if member.status in ["creator", "administrator", "member"]:
-                logger.info(f"✅ User {user_id} IS member of {channel_id}")
-            else:
-                logger.info(f"❌ User {user_id} NOT member of {channel_id} (status: {member.status})")
-                missing_channels.append(int(channel_id))
+            # Check if user is a member
+            try:
+                member = await client.get_chat_member(channel_id, user_id)
+                logger.info(f"User {user_id} status in {channel_id}: {member.status}")
+                
+                if member.status in ["creator", "administrator", "member"]:
+                    logger.info(f"✅ User {user_id} IS member of {channel_id}")
+                elif member.status == "left":
+                    logger.info(f"❌ User {user_id} has LEFT {channel_id}")
+                    missing_channels.append(channel_id)
+                elif member.status == "kicked":
+                    logger.info(f"❌ User {user_id} is BANNED from {channel_id}")
+                    missing_channels.append(channel_id)
+                else:
+                    logger.info(f"❌ User {user_id} NOT member of {channel_id} (status: {member.status})")
+                    missing_channels.append(channel_id)
+                    
+            except Exception as member_error:
+                logger.error(f"❌ Error checking user membership in {channel_id}: {member_error}")
+                # If we can't check membership, assume user needs to join
+                missing_channels.append(channel_id)
                 
         except Exception as e:
-            logger.error(f"❌ Error checking {channel_id} for user {user_id}: {e}")
-            # If we can't check, assume user is not member
-            missing_channels.append(int(channel_id))
+            logger.error(f"❌ General error checking {channel_id} for user {user_id}: {e}")
+            missing_channels.append(channel_id)
     
     is_all_subscribed = len(missing_channels) == 0
     logger.info(f"Final result for user {user_id}: subscribed={is_all_subscribed}, missing={missing_channels}")

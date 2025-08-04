@@ -1166,6 +1166,14 @@ async def auto_filter(client, msg, spoll=False):
 
 
     cap = f"""<b>"{search}"</b>\n<b> ιѕ ɴow reαdy ғor yoυ!</b> ✨\n\n<b>Cнooѕe yoυr preғerred opтιoɴѕ вelow тo ғιɴd тнe вeѕт мαтcн ғor yoυr ɴeedѕ</b> 🔻\n\n🗣 ʟᴀɴ... | ▶️ ʀᴇꜱ... | 🎦 ᴄᴀᴛ..."""
-    m=await message.reply_photo(photo=random.choice(PICS), caption=cap, reply_markup=InlineKeyboardMarkup(btn))
+    
+    # Try to send with photo, fallback to text message if photo fails
+    try:
+        m = await message.reply_photo(photo=random.choice(PICS), caption=cap, reply_markup=InlineKeyboardMarkup(btn))
+    except Exception as photo_error:
+        logger.warning(f"Photo send failed: {photo_error}, falling back to text message")
+        # Fallback to text message if photo fails
+        m = await message.reply_text(cap, reply_markup=InlineKeyboardMarkup(btn))
+    
     await asyncio.sleep(600)
     await m.delete()

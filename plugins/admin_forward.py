@@ -103,35 +103,52 @@ async def admin_forward_handler(client: Client, message: Message):
         
         logger.info(f"Processing file: {media.file_name} (Type: {file_type}, Size: {media.file_size})")
         
-        # Check for duplicates before saving
-        from database.ia_filterdb import primary_col, secondary_col
+        # Enhanced duplicate detection with file ID refresh capability
+        from database.ia_filterdb import primary_col, secondary_col, find_duplicate_by_name_and_size
         
-        # Check if file already exists by unique_id or file_name
         existing_file = None
+        update_mode = False
+        
         try:
-            # Check by unique_id first (most reliable)
-            existing_file = primary_col.find_one({'_id': media.file_unique_id})
-            if not existing_file:
-                existing_file = secondary_col.find_one({'_id': media.file_unique_id})
+            # First check by file_name and size (more reliable for expired ID updates)
+            existing_file, database_location = await find_duplicate_by_name_and_size(
+                media.file_name, media.file_size
+            )
             
-            # If not found by unique_id, check by file_name (less reliable but catches similar files)
-            if not existing_file:
-                existing_file = primary_col.find_one({'file_name': media.file_name})
-                if not existing_file:
-                    existing_file = secondary_col.find_one({'file_name': media.file_name})
+            if existing_file:
+                old_file_id = existing_file['_id']
+                new_file_id = media.file_id
+                
+                logger.info(f"Found existing file: {media.file_name}")
+                logger.info(f"Old file ID: {old_file_id}")
+                logger.info(f"New file ID: {new_file_id}")
+                
+                # Check if this is the same file ID or a potential refresh
+                if old_file_id == new_file_id:
+                    await message.reply(
+                        f"⚠️ **Identical File Already Exists**\n\n"
+                        f"📁 **File:** {media.file_name}\n"
+                        f"📺 **Channel:** {forward_from_title}\n"
+                        f"🔍 **Match:** Same file ID\n\n"
+                        f"🚫 **Not added** - This exact movie is already in the database."
+                    )
+                    return
+                else:
+                    # This could be a refresh with new file ID
+                    update_mode = True
+                    logger.info(f"Potential file ID refresh detected - proceeding with update")
                     
+                    await message.reply(
+                        f"🔄 **File Refresh Detected**\n\n"
+                        f"📁 **File:** {media.file_name}\n"
+                        f"📺 **Channel:** {forward_from_title}\n"
+                        f"🔄 **Action:** Updating expired file ID\n\n"
+                        f"⏳ Processing update..."
+                    )
+            
         except Exception as e:
             logger.error(f"Error checking for duplicates: {e}")
-        
-        if existing_file:
-            await message.reply(
-                f"⚠️ **Duplicate File Detected**\n\n"
-                f"📁 **File:** {media.file_name}\n"
-                f"📺 **Channel:** {forward_from_title}\n"
-                f"🔍 **Match:** Found existing file with same {'unique ID' if existing_file.get('_id') == media.file_unique_id else 'filename'}\n\n"
-                f"🚫 **Not added** - This movie is already in the database."
-            )
-            return
+            existing_file = None
         
         # Enhanced database saving with detailed logging
         logger.info(f"Attempting to save file: {media.file_name}")
@@ -150,17 +167,32 @@ async def admin_forward_handler(client: Client, message: Message):
                     CHANNELS.append(forward_from_id)
                     logger.info(f"Added new channel {forward_from_id} to CHANNELS list")
                 
-                await message.reply(
-                    f"✅ **Movie Added Successfully!**\n\n"
-                    f"📁 **File:** {media.file_name}\n"
-                    f"📏 **Size:** {media.file_size:,} bytes\n"
-                    f"🎬 **Type:** {file_type.title()}\n"
-                    f"📺 **Source:** {forward_from_title}\n"
-                    f"🆔 **File ID:** `{getattr(media, 'file_id', 'Unknown')[:20]}...`\n\n"
-                    f"✨ Users can now search for this movie!\n"
-                    f"🔍 Try searching: `{media.file_name.split('.')[0]}`"
-                )
-                logger.info(f"✅ Successfully processed and saved: {media.file_name}")
+                # Different message based on whether this was an update or new file
+                if update_mode and status == 5:  # Status 5 = updated existing file
+                    await message.reply(
+                        f"✅ **Movie File ID Refreshed Successfully!**\n\n"
+                        f"📁 **File:** {media.file_name}\n"
+                        f"📏 **Size:** {media.file_size:,} bytes\n"
+                        f"🎬 **Type:** {file_type.title()}\n"
+                        f"📺 **Source:** {forward_from_title}\n"
+                        f"🔄 **Action:** Updated expired file ID\n"
+                        f"🆔 **New File ID:** `{getattr(media, 'file_id', 'Unknown')[:20]}...`\n\n"
+                        f"🎉 **FIXED!** Users can now get this movie again!\n"
+                        f"🔍 Try searching: `{media.file_name.split('.')[0]}`"
+                    )
+                    logger.info(f"✅ Successfully refreshed file ID for: {media.file_name}")
+                else:
+                    await message.reply(
+                        f"✅ **Movie Added Successfully!**\n\n"
+                        f"📁 **File:** {media.file_name}\n"
+                        f"📏 **Size:** {media.file_size:,} bytes\n"
+                        f"🎬 **Type:** {file_type.title()}\n"
+                        f"📺 **Source:** {forward_from_title}\n"
+                        f"🆔 **File ID:** `{getattr(media, 'file_id', 'Unknown')[:20]}...`\n\n"
+                        f"✨ Users can now search for this movie!\n"
+                        f"🔍 Try searching: `{media.file_name.split('.')[0]}`"
+                    )
+                    logger.info(f"✅ Successfully processed and saved: {media.file_name}")
                 
             else:
                 if status == 0:  # Already exists
